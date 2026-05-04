@@ -137,25 +137,25 @@ export function Globe({ size = 360 }: GlobeProps) {
         <defs>
           <radialGradient id="rim" cx="50%" cy="50%" r="50%">
             <stop offset="55%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0"/>
-            <stop offset="78%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.18"/>
-            <stop offset="90%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.55"/>
-            <stop offset="96%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.42"/>
+            <stop offset="78%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.40"/>
+            <stop offset="90%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.92"/>
+            <stop offset="96%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.75"/>
             <stop offset="100%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0"/>
           </radialGradient>
           <radialGradient id="rimOuter" cx="50%" cy="50%" r="50%">
             <stop offset="0%"   stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
             <stop offset="50%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
-            <stop offset="62%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.10"/>
-            <stop offset="72%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.30"/>
-            <stop offset="80%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.22"/>
-            <stop offset="90%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.10"/>
+            <stop offset="62%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.22"/>
+            <stop offset="72%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.62"/>
+            <stop offset="80%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.48"/>
+            <stop offset="90%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.20"/>
             <stop offset="100%" stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
           </radialGradient>
           <radialGradient id="rimFar" cx="50%" cy="50%" r="50%">
             <stop offset="0%"   stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
             <stop offset="35%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
-            <stop offset="55%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.10"/>
-            <stop offset="75%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.05"/>
+            <stop offset="55%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.18"/>
+            <stop offset="75%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.10"/>
             <stop offset="100%" stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
           </radialGradient>
           <radialGradient id="globeShade" cx="38%" cy="36%" r="72%">
@@ -164,15 +164,15 @@ export function Globe({ size = 360 }: GlobeProps) {
             <stop offset="100%" stopColor="var(--globe-lo,#000000)"  stopOpacity="1"/>
           </radialGradient>
           <filter id="rimGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="11"/>
+            <feGaussianBlur stdDeviation="14"/>
           </filter>
         </defs>
         <circle cx={cx} cy={cy} r={R + 140} fill="url(#rimFar)"/>
         <circle cx={cx} cy={cy} r={R + 70}  fill="url(#rimOuter)"/>
         <circle cx={cx} cy={cy} r={R + 4}   fill="url(#rim)" filter="url(#rimGlow)"/>
         <circle cx={cx} cy={cy} r={R}        fill="url(#globeShade)"/>
-        <circle cx={cx} cy={cy} r={R}        fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="0.6" opacity="0.35"/>
-        <circle cx={cx} cy={cy} r={R + 1}    fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="14"  opacity="0.12" filter="url(#rimGlow)"/>
+        <circle cx={cx} cy={cy} r={R}        fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="1.2" opacity="0.72"/>
+        <circle cx={cx} cy={cy} r={R + 1}    fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="18"  opacity="0.28" filter="url(#rimGlow)"/>
         <g>
           {dots.map((_, i) => (
             <circle key={i} className="gd" cx={cx} cy={cy} r="1" fill="var(--globe-dot,#FFFFFF)" />

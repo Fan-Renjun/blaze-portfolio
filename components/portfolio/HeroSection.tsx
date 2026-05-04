@@ -4,7 +4,7 @@ import { Globe } from "./Globe";
 
 export function HeroSection() {
   return (
-    <section className="section hero" id="home">
+    <section className="section hero" id="home" style={{ padding: 0 }}>
       <div className="container hero-split">
         <div>
           <div className="hero-text-left">
@@ -20,11 +20,13 @@ export function HeroSection() {
                 <span className="solid">Fan<span className="dot-end">.</span></span>
               </span>
             </h1>
-            <p className="slogan">{PROFILE.slogan}。{PROFILE.bio}</p>
+            <p className="slogan">
+              <strong>{PROFILE.slogan}</strong>。{PROFILE.bio}
+            </p>
 
             <div className="meta">
               {PROFILE.edu.map((e, i) => (
-                <span key={i} className={i === 0 ? "tag accent" : "tag"}>
+                <span key={e.school} className={i === 0 ? "tag accent" : "tag"}>
                   {e.school} · {e.degree}
                 </span>
               ))}
@@ -46,7 +48,7 @@ export function HeroSection() {
         </div>
 
         <div className="hero-globe-right" aria-hidden="true">
-          <Globe size={760} />
+          <Globe size={820} />
           <div className="globe-meta hero-meta-pill">
             <span className="dot-live" />
             <span>BLAZE FAN · 32.0584° N, 118.7965° E</span>

@@ -4,7 +4,6 @@ import { Navbar, ThemeFab, TechCursor, ParticleField, HeroSection, WorkSection, 
 
 export default function Home() {
   const [theme, setTheme] = useState("dark");
-  const [bgVariant] = useState<"grid" | "particles">("grid");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -15,8 +14,10 @@ export default function Home() {
   return (
     <div className="portfolio">
       <TechCursor />
-      {bgVariant === "particles" ? <ParticleField /> : <div className="bg-grid" />}
+      {/* background layers (bottom → top): canvas → grid → particles */}
       <div className="bg-canvas" style={{ zIndex: -1 }} />
+      <div className="bg-grid" />
+      <ParticleField />
 
       <Navbar />
       <ThemeFab theme={theme} onToggle={toggleTheme} />

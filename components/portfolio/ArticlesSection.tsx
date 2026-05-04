@@ -17,7 +17,7 @@ export function ArticlesSection() {
           <SectionHead
             eyebrow="WRITING / 文章"
             title="想法的延长线"
-            sub="不定期更新关于 AI、产品、设计的随笔。"
+            sub="不定期更新关于 AI、产品、开发、设计的随笔。"
             action={
               <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
                 <span>{showAll ? "收起" : "全部文章"}</span>

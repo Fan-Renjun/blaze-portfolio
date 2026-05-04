@@ -18,7 +18,7 @@ export function ProjectsSection() {
           <SectionHead
             eyebrow="PROJECTS / 项目经历"
             title="已发布与正在发生"
-            sub="目前主要聚焦在大模型 Agent 与多模态交互。"
+            sub="目前主要聚焦在AI Agent的开发、AI native的探索与落地。"
             action={
               <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
                 <span>{showAll ? "收起" : `查看全部 (${PROJECTS.length})`}</span>
@@ -60,7 +60,7 @@ export function ProjectsSection() {
             </p>
             <div className="body-h">关键工作</div>
             <ul className="bullet-list">
-              {openProject.detail.map((d, i) => <li key={i}>{d}</li>)}
+              {openProject.detail.map((d) => <li key={d}>{d}</li>)}
             </ul>
             <div className="body-h">影响</div>
             <div className="proj-stack">

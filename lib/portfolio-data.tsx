@@ -90,16 +90,16 @@ export const WORK: WorkItem[] = [
     date: "2025.05 — 现在",
     role: "AI Product Manager",
     company: "阿里巴巴 · Fliggy",
-    desc: "负责飞猪千问对话体验、千问-飞猪 Agent 与 AI 拍照讲解，将大模型能力嵌入真实的旅行决策与服务链路。",
-    tags: ["LLM Agent", "Multimodal", "Travel"],
+    desc: "负责飞猪千问Agent、千问APP内的飞猪 Agent 与 拍照讲解Agent，将大模型能力嵌入真实的旅行决策与服务链路。",
+    tags: ["AI Agent", "Multimodal", "Travel"],
     current: true,
   },
   {
     date: "2021.07 — 2025.04",
     role: "AI Product Manager",
-    company: "美团 · 闪购 / 大众点评 / 地图",
-    desc: "主导闪购首页推荐与智能化运营，参与大众点评智能助手从 0 到 1，并负责美团地图侧的搜索与推荐体验。",
-    tags: ["推荐系统", "Conversational AI", "搜索"],
+    company: "美团 · 闪购 / 大众点评",
+    desc: "负责美团闪购首页。主导大众点评智能助手从 0 到 1 的系统构建，同时负责大众点评地图的搜索与推荐优化，致力于将 AI 能力深度嵌入本地生活决策链路。",
+    tags: ["首页", "Conversational AI", "地图"],
   },
 ];
 
