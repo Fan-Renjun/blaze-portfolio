@@ -293,7 +293,7 @@ const s: Record<string, React.CSSProperties> = {
   card:      { width: "100%", maxWidth: 620, background: "#18181c", borderRadius: 12, padding: 32, border: "1px solid #2a2a30" },
   h1:        { fontSize: 20, fontWeight: 600, color: "#f0f0f5", marginBottom: 20, letterSpacing: "-.02em" },
   tabs:      { display: "flex", gap: 8, marginBottom: 28, borderBottom: "1px solid #2a2a30", paddingBottom: 16 },
-  tab:       { padding: "7px 16px", borderRadius: 8, border: "1px solid #2a2a30", background: "transparent", color: "#888", fontSize: 13, cursor: "pointer" },
+  tab:       { padding: "7px 16px", borderRadius: 8, borderWidth: 1, borderStyle: "solid", borderColor: "#2a2a30", background: "transparent", color: "#888", fontSize: 13, cursor: "pointer" },
   tabActive: { background: "#007AFF22", borderColor: "#007AFF", color: "#7eb8ff" },
   form:      { display: "flex", flexDirection: "column", gap: 18 },
   label:     { fontSize: 11, color: "#666", fontFamily: "monospace", letterSpacing: ".08em", textTransform: "uppercase" },
