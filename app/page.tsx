@@ -1,30 +1,36 @@
-import { AuthButton } from "@/components/auth-button";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import Link from "next/link";
-import { Suspense } from "react";
+"use client";
+import { useEffect, useState } from "react";
+import { Navbar, ThemeFab, TechCursor, ParticleField, HeroSection, WorkSection, ProjectsSection, ArticlesSection, PhotosSection, FitnessSection, TravelSection, Footer } from "@/components/portfolio";
 
 export default function Home() {
+  const [theme, setTheme] = useState("dark");
+  const [bgVariant] = useState<"grid" | "particles">("grid");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+
   return (
-    <main className="min-h-screen flex flex-col">
-      <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-        <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-          <Link href="/" className="font-semibold">
-            My App
-          </Link>
-          <Suspense>
-            <AuthButton />
-          </Suspense>
-        </div>
-      </nav>
+    <div className="portfolio">
+      <TechCursor />
+      {bgVariant === "particles" ? <ParticleField /> : <div className="bg-grid" />}
+      <div className="bg-canvas" style={{ zIndex: -1 }} />
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <h1 className="text-4xl font-bold">Welcome</h1>
-        <p className="text-foreground/60">Get started by signing in or creating an account.</p>
-      </div>
+      <Navbar />
+      <ThemeFab theme={theme} onToggle={toggleTheme} />
 
-      <footer className="w-full flex items-center justify-center border-t py-8">
-        <ThemeSwitcher />
-      </footer>
-    </main>
+      <main className="shell">
+        <HeroSection />
+        <WorkSection />
+        <ProjectsSection />
+        <ArticlesSection />
+        <PhotosSection />
+        <TravelSection />
+        <FitnessSection />
+        <Footer />
+      </main>
+    </div>
   );
 }
