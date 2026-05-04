@@ -84,10 +84,24 @@ html[data-theme="light"] .portfolio {
 [data-theme="light"] .ar-arrow:hover,
 [data-theme="light"] .article-row:hover .ar-arrow { color: #000 }
 
-/* ─── Custom tech cursor ─────────────────────────────────── */
+/* ─── Custom tech cursor (scoped to portfolio pages only) ─── */
 @media (hover:hover) and (pointer:fine) {
-  html, body { cursor: none }
-  a, button, .card, .photo, .article-row, .nav-link, .tag, [role="button"], input, textarea, select { cursor: none }
+  /* cursor:none only when .portfolio wrapper is present in the page */
+  html:has(.portfolio),
+  html:has(.portfolio) body { cursor: none }
+
+  .portfolio a,
+  .portfolio button,
+  .portfolio .card,
+  .portfolio .photo,
+  .portfolio .article-row,
+  .portfolio .nav-link,
+  .portfolio .tag,
+  .portfolio [role="button"],
+  .portfolio input,
+  .portfolio textarea,
+  .portfolio select { cursor: none }
+
   .cursor-reticle, .cursor-dot {
     position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
     transform: translate(-50%,-50%); will-change: transform;
