@@ -482,6 +482,7 @@ html[data-theme="light"] .portfolio {
   display: flex; align-items: center; justify-content: space-between;
 }
 .photo .photo-meta .loc { color: var(--fg-3); font-family: var(--font-mono); font-size: 11px }
+/* 横屏 / 方形 */
 .photo.s-1 { grid-column: span 2; grid-row: span 2 }
 .photo.s-2 { grid-column: span 4; grid-row: span 2 }
 .photo.s-3 { grid-column: span 3; grid-row: span 2 }
@@ -489,6 +490,10 @@ html[data-theme="light"] .portfolio {
 .photo.s-5 { grid-column: span 1; grid-row: span 1 }
 .photo.s-6 { grid-column: span 2; grid-row: span 2 }
 .photo.s-7 { grid-column: span 3; grid-row: span 1 }
+/* 竖屏专属 */
+.photo.s-v1 { grid-column: span 1; grid-row: span 2 }
+.photo.s-v2 { grid-column: span 2; grid-row: span 3 }
+.photo.s-v3 { grid-column: span 1; grid-row: span 3 }
 @media (max-width:880px) {
   .gallery { grid-template-columns: repeat(4,1fr); grid-auto-rows: 90px }
 }

@@ -27,6 +27,7 @@ export type Photo = {
   category: string | null;
   location: string | null;
   aspect_ratio: string | null;
+  orientation: "横屏" | "竖屏" | null;
   created_at: string;
 };
 

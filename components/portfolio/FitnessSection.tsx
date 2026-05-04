@@ -42,7 +42,7 @@ export function FitnessSection() {
           <SectionHead
             eyebrow="FITNESS / 运动"
             title="用身体校准生活"
-            sub="力量训练 4 次/周 · 每周追踪。"
+            sub="体育总局注册健身教练 · 力量训练 4 次/周 · 每周追踪。"
             action={
               <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
                 <span>{showAll ? "收起" : "完整数据"}</span>
@@ -75,6 +75,15 @@ export function FitnessSection() {
               </div>
               <div className="big">{FITNESS.totalKm}<span className="unit">km</span></div>
               <div className="delta" style={{ color: "var(--fg-3)" }}>跑步 + 骑行</div>
+            </div>
+
+            <div className="fit-card fit-c-3">
+              <div className="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                当前体脂
+              </div>
+              <div className="big">{FITNESS.bodyFat}<span className="unit">%</span></div>
+              <div className="delta" style={{ color: "var(--fg-3)" }}>体脂率</div>
             </div>
 
             <div className="fit-card fit-c-6">

@@ -25,7 +25,7 @@ export type Photo = {
 export type FitnessData = {
   weekHours: number; weekDelta: string; totalKm: number;
   bench: PREntry; squat: PREntry; dead: PREntry; ohp: PREntry;
-  avgHr: number; kcal: number; heat: number[];
+  avgHr: number; kcal: number; bodyFat: number; heat: number[];
 };
 export type PREntry = { name: string; val: string; delta: string };
 export type TravelCity = {
@@ -50,7 +50,7 @@ export const PROFILE: Profile = {
 
 export const SOCIAL: SocialLink[] = [
   {
-    id: "xhs", name: "小红书", handle: "@思齐", url: "#",
+    id: "xhs", name: "小红书", handle: "@思齐", url: "https://www.xiaohongshu.com/user/profile/67872b5700000000080197e2",
     icon: (props) => (
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M3 4h18v16H3z" fill="none" stroke="currentColor" strokeWidth="1.4"/>
@@ -59,7 +59,7 @@ export const SOCIAL: SocialLink[] = [
     ),
   },
   {
-    id: "jike", name: "即刻", handle: "@思齐", url: "#",
+    id: "jike", name: "即刻", handle: "@思齐", url: "https://web.okjike.com/u/5E556E63-1169-4B9A-A316-4D39CC526E91",
     icon: (props) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" {...props}>
         <circle cx="12" cy="12" r="9"/>
@@ -68,7 +68,7 @@ export const SOCIAL: SocialLink[] = [
     ),
   },
   {
-    id: "twitter", name: "Twitter", handle: "@blazefan", url: "#",
+    id: "twitter", name: "Twitter", handle: "@qweasdzxc564103", url: "https://x.com/qweasdzxc564103",
     icon: (props) => (
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231z"/>
@@ -76,7 +76,7 @@ export const SOCIAL: SocialLink[] = [
     ),
   },
   {
-    id: "github", name: "GitHub", handle: "@blazefan", url: "#",
+    id: "github", name: "GitHub", handle: "@Fan-Renjun", url: "https://github.com/Fan-Renjun",
     icon: (props) => (
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-1.93c-3.2.7-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.34.95.1-.74.4-1.24.73-1.53-2.55-.29-5.24-1.27-5.24-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.39.97 0 1.95.13 2.86.39 2.18-1.48 3.14-1.17 3.14-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.07 0 4.39-2.69 5.36-5.25 5.64.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.55C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
@@ -196,12 +196,13 @@ export const FITNESS: FitnessData = {
   weekHours: 6.4,
   weekDelta: "+0.8h",
   totalKm: 412,
-  bench: { name: "卧推 1RM", val: "92.5 kg", delta: "+5.0" },
-  squat: { name: "深蹲 1RM", val: "135 kg",  delta: "+7.5" },
-  dead:  { name: "硬拉 1RM", val: "160 kg",  delta: "+10"  },
-  ohp:   { name: "推举 1RM", val: "60 kg",   delta: "+2.5" },
+  bench: { name: "卧推 1RM", val: "80 kg",  delta: "+5.0" },
+  squat: { name: "深蹲 1RM", val: "120 kg", delta: "+7.5" },
+  dead:  { name: "硬拉 1RM", val: "110 kg", delta: "+10"  },
+  ohp:   { name: "推举 1RM", val: "50 kg",  delta: "+2.5" },
   avgHr: 142,
   kcal: 738,
+  bodyFat: 13,
   heat: Array.from({ length: 26 * 7 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;
     const r = seed / 233280;
@@ -214,21 +215,41 @@ export const FITNESS: FitnessData = {
 };
 
 export const TRAVEL: TravelData = {
-  countries: 12,
-  cities: 38,
-  km: 86420,
+  countries: 17,
+  cities: 42,
+  km: 112800,
   recent: [
     { id: "t1",  city: "东京",       country: "Japan",       lat: 35.68,  lng: 139.69,  year: 2025, notes: "涉谷夜雨与一杯热可可。" },
     { id: "t2",  city: "京都",       country: "Japan",       lat: 35.01,  lng: 135.77,  year: 2025, notes: "清晨的伏见稻荷神社，几乎无人。" },
-    { id: "t3",  city: "清迈",       country: "Thailand",    lat: 18.79,  lng: 98.99,   year: 2024, notes: "在山间寺庙学习呼吸。" },
-    { id: "t4",  city: "雷克雅未克", country: "Iceland",     lat: 64.15,  lng: -21.94,  year: 2024, notes: "极光让人沉默。" },
-    { id: "t5",  city: "里斯本",     country: "Portugal",    lat: 38.72,  lng: -9.14,   year: 2023, notes: "Tram 28 与一杯 Ginja。" },
-    { id: "t6",  city: "新加坡",     country: "Singapore",   lat: 1.35,   lng: 103.82,  year: 2023, notes: "夜里在滨海湾跑步。" },
-    { id: "t7",  city: "旧金山",     country: "USA",         lat: 37.77,  lng: -122.42, year: 2023, notes: "Mission 街区的咖啡。" },
-    { id: "t8",  city: "墨尔本",     country: "Australia",   lat: -37.81, lng: 144.96,  year: 2022, notes: "Block Arcade 的下午。" },
-    { id: "t9",  city: "巴塞罗那",   country: "Spain",       lat: 41.39,  lng: 2.17,    year: 2022, notes: "高迪未完成的圣家堂。" },
-    { id: "t10", city: "首尔",       country: "Korea",       lat: 37.57,  lng: 126.98,  year: 2022, notes: "弘大夜里 2 点的烤肉。" },
-    { id: "t11", city: "伊斯坦布尔", country: "Türkiye",     lat: 41.01,  lng: 28.98,   year: 2024, notes: "在博斯普鲁斯海峡看日落。" },
-    { id: "t12", city: "苏黎世",     country: "Switzerland", lat: 47.38,  lng: 8.54,    year: 2025, notes: "湖边的冷风。" },
+    { id: "t3",  city: "奈良",       country: "Japan",       lat: 34.68,  lng: 135.83,  year: 2025, notes: "鹿与柿子，秋天最温柔的配色。" },
+    { id: "t4",  city: "宇治",       country: "Japan",       lat: 34.88,  lng: 135.80,  year: 2025, notes: "抹茶与平等院，时间在这里慢下来。" },
+    { id: "t5",  city: "济州岛",     country: "Korea",       lat: 33.49,  lng: 126.53,  year: 2024, notes: "火山岛的风，吹走了所有待办事项。" },
+    { id: "t6",  city: "首尔",       country: "Korea",       lat: 37.57,  lng: 126.98,  year: 2022, notes: "弘大夜里 2 点的烤肉。" },
+    { id: "t7",  city: "清迈",       country: "Thailand",    lat: 18.79,  lng: 98.99,   year: 2024, notes: "在山间寺庙学习呼吸。" },
+    { id: "t8",  city: "泗水",       country: "Indonesia",   lat: -7.25,  lng: 112.75,  year: 2024, notes: "科莫多之旅的起点，热带港口的喧嚣。" },
+    { id: "t9",  city: "巴厘岛",     country: "Indonesia",   lat: -8.34,  lng: 115.09,  year: 2024, notes: "神庙与稻田，岛屿有它自己的时区。" },
+    { id: "t10", city: "科莫多",     country: "Indonesia",   lat: -8.55,  lng: 119.49,  year: 2024, notes: "与科莫多龙对视的三秒钟，心跳漏了一拍。" },
+    { id: "t11", city: "胡志明",     country: "Vietnam",     lat: 10.82,  lng: 106.63,  year: 2023, notes: "摩托车海洋与路边的法式咖啡。" },
+    { id: "t12", city: "芽庄",       country: "Vietnam",     lat: 12.24,  lng: 109.19,  year: 2023, notes: "海上小岛，浮潜看见另一个世界。" },
+    { id: "t13", city: "岘港",       country: "Vietnam",     lat: 16.05,  lng: 108.22,  year: 2023, notes: "美溪海滩的日落，橙红色无边无际。" },
+    { id: "t14", city: "河内",       country: "Vietnam",     lat: 21.02,  lng: 105.84,  year: 2023, notes: "老城区的街巷，历史与油烟混在一起。" },
+    { id: "t15", city: "新加坡",     country: "Singapore",   lat: 1.35,   lng: 103.82,  year: 2023, notes: "夜里在滨海湾跑步。" },
+    { id: "t16", city: "吉隆坡",     country: "Malaysia",    lat: 3.14,   lng: 101.69,  year: 2023, notes: "双子塔下的仰望，钢铁与云彩。" },
+    { id: "t17", city: "仙本那",     country: "Malaysia",    lat: 4.47,   lng: 118.61,  year: 2023, notes: "水屋与星沙，全世界最安静的早晨。" },
+    { id: "t18", city: "马尔代夫",   country: "Maldives",    lat: 4.17,   lng: 73.51,   year: 2024, notes: "水下一米，礁鲨从身边游过。" },
+    { id: "t19", city: "香港",       country: "China",       lat: 22.33,  lng: 114.16,  year: 2023, notes: "维多利亚港的夜景，流动的城市体温。" },
+    { id: "t20", city: "新疆",       country: "China",       lat: 43.79,  lng: 87.60,   year: 2022, notes: "戈壁与雪山同框，西域的辽阔无法压缩。" },
+    { id: "t21", city: "西藏",       country: "China",       lat: 29.65,  lng: 91.11,   year: 2022, notes: "4500 米的高原，每一口呼吸都是奢侈。" },
+    { id: "t22", city: "内蒙",       country: "China",       lat: 40.82,  lng: 111.74,  year: 2023, notes: "草原骑马，云影追着人跑。" },
+    { id: "t23", city: "宁夏",       country: "China",       lat: 38.47,  lng: 106.27,  year: 2022, notes: "沙坡头的日落，沙漠与黄河的奇异交界。" },
+    { id: "t24", city: "青海",       country: "China",       lat: 36.62,  lng: 101.78,  year: 2022, notes: "茶卡盐湖的天空之镜，倒影里有另一个我。" },
+    { id: "t25", city: "四川",       country: "China",       lat: 30.66,  lng: 104.07,  year: 2023, notes: "九寨沟的蓝，蓝得像 PS 过的不真实。" },
+    { id: "t26", city: "雷克雅未克", country: "Iceland",     lat: 64.15,  lng: -21.94,  year: 2024, notes: "极光让人沉默。" },
+    { id: "t27", city: "里斯本",     country: "Portugal",    lat: 38.72,  lng: -9.14,   year: 2023, notes: "Tram 28 与一杯 Ginja。" },
+    { id: "t28", city: "旧金山",     country: "USA",         lat: 37.77,  lng: -122.42, year: 2023, notes: "Mission 街区的咖啡。" },
+    { id: "t29", city: "墨尔本",     country: "Australia",   lat: -37.81, lng: 144.96,  year: 2022, notes: "Block Arcade 的下午。" },
+    { id: "t30", city: "巴塞罗那",   country: "Spain",       lat: 41.39,  lng: 2.17,    year: 2022, notes: "高迪未完成的圣家堂。" },
+    { id: "t31", city: "伊斯坦布尔", country: "Türkiye",     lat: 41.01,  lng: 28.98,   year: 2024, notes: "在博斯普鲁斯海峡看日落。" },
+    { id: "t32", city: "苏黎世",     country: "Switzerland", lat: 47.38,  lng: 8.54,    year: 2025, notes: "湖边的冷风。" },
   ],
 };

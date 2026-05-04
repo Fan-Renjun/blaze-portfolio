@@ -198,7 +198,7 @@ function ArticleForm({ supabase }: { supabase: ReturnType<typeof createClient> }
 }
 
 // ─── Photo form ───────────────────────────────────────────────
-const PHO_INIT = { category: "", location: "" };
+const PHO_INIT = { category: "", location: "", orientation: "" };
 const PHO_CATS = ["城市街景", "自然风光", "人物纪实", "建筑", "旅行", "静物"];
 
 function PhotoForm({ supabase }: { supabase: ReturnType<typeof createClient> }) {
@@ -224,8 +224,9 @@ function PhotoForm({ supabase }: { supabase: ReturnType<typeof createClient> }) 
       const image_url = await uploadImage(supabase, "photos", file);
       const { error } = await supabase.from("photos").insert({
         image_url,
-        category: fields.category || null,
-        location: fields.location || null,
+        category:    fields.category    || null,
+        location:    fields.location    || null,
+        orientation: fields.orientation || null,
       });
       if (error) throw new Error(error.message);
       setStatus({ type: "success", message: "照片已保存！" });
@@ -241,6 +242,13 @@ function PhotoForm({ supabase }: { supabase: ReturnType<typeof createClient> }) 
       <Row label="图片 *">
         <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={s.fileInput} />
         {preview && <img src={preview} alt="preview" style={s.preview} />}
+      </Row>
+      <Row label="横屏 / 竖屏">
+        <select style={{ ...s.input, cursor: "pointer" }} value={fields.orientation} onChange={set("orientation")}>
+          <option value="">请选择方向</option>
+          <option value="横屏">横屏</option>
+          <option value="竖屏">竖屏</option>
+        </select>
       </Row>
       <Row label="分类">
         <select style={{ ...s.input, cursor: "pointer" }} value={fields.category} onChange={set("category")}>
