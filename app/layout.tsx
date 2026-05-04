@@ -4,14 +4,15 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import "./portfolio.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+// Priority: custom domain > Vercel auto URL > localhost
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  metadataBase: new URL(siteUrl),
+  title: "Blaze Fan · AI Product Manager",
+  description: "AI 产品经理，视觉中国签约摄影师，专注于让 AI 在真实场景中创造价值。",
 };
 
 const geistSans = Geist({
