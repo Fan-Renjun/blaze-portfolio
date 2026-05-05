@@ -81,43 +81,56 @@ export function Globe({ size = 360 }: GlobeProps) {
     const svg = ref.current;
     if (!svg) return;
     const t0 = performance.now();
-    let raf: number;
+    let raf = 0;
+    let visible = true;
+    let lastFrameTime = 0;
+    const FRAME_MS = 1000 / 20; // cap at 20 fps — rotation is slow, imperceptible
+
+    // Cache circle elements once — avoids 5200-node querySelectorAll every frame
+    const circles = Array.from(svg.querySelectorAll<SVGCircleElement>(".gd"));
 
     const render = (now: number) => {
+      if (!visible) { raf = 0; return; }              // stop loop when off-screen
+      raf = requestAnimationFrame(render);
+      if (now - lastFrameTime < FRAME_MS) return;     // skip frame if too soon
+      lastFrameTime = now;
+
       const a = ((now - t0) / 45000) * Math.PI * 2;
       const cosA = Math.cos(a), sinA = Math.sin(a);
       const tilt = -15 * Math.PI / 180;
       const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
       const R = size / 2 - 14;
       const cx = size / 2, cy = size / 2;
-      const circles = svg.querySelectorAll<SVGCircleElement>(".gd");
 
       for (let i = 0; i < dots.length; i++) {
         const [x0, y0, z0] = dots[i];
         const x1 = x0 * cosA + z0 * sinA;
-        const y1 = y0;
         const z1 = -x0 * sinA + z0 * cosA;
-        const x2 = x1;
-        const y2 = y1 * cosT - z1 * sinT;
-        const z2 = y1 * sinT + z1 * cosT;
+        const y2 = y0 * cosT - z1 * sinT;
+        const z2 = y0 * sinT + z1 * cosT;
         const depth = (z2 + 1) / 2;
-        const px = cx + x2 * R;
-        const py = cy - y2 * R;
         const c = circles[i];
         if (!c) continue;
         if (z2 < -0.05) {
           c.setAttribute("opacity", "0");
         } else {
-          c.setAttribute("cx", px.toFixed(2));
-          c.setAttribute("cy", py.toFixed(2));
-          c.setAttribute("r", (0.4 + depth * 1.0).toFixed(2));
-          c.setAttribute("opacity", (0.18 + depth * 0.55).toFixed(3));
+          c.setAttribute("cx", (cx + x1 * R).toFixed(1));
+          c.setAttribute("cy", (cy - y2 * R).toFixed(1));
+          c.setAttribute("r",  (0.4 + depth).toFixed(1));
+          c.setAttribute("opacity", (0.18 + depth * 0.55).toFixed(2));
         }
       }
-      raf = requestAnimationFrame(render);
     };
+
+    // IntersectionObserver — single RAF chain, no double-start bug
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible && raf === 0) raf = requestAnimationFrame(render);
+    }, { threshold: 0.01 });
+    io.observe(svg);
     raf = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(raf);
+
+    return () => { cancelAnimationFrame(raf); io.disconnect(); };
   }, [dots, size]);
 
   const R = size / 2 - 14;

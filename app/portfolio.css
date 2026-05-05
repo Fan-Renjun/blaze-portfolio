@@ -84,8 +84,10 @@ html[data-theme="light"] .portfolio {
 [data-theme="light"] .ar-arrow:hover,
 [data-theme="light"] .article-row:hover .ar-arrow { color: #000 }
 
-/* ─── Smooth scroll & GPU hints ─────────────────────────── */
+/* ─── Scroll behaviour ───────────────────────────────────── */
 html { scroll-behavior: smooth }
+/* Stop overscroll rubber-band from making fixed backgrounds appear to move */
+html, body { overscroll-behavior: none }
 .globe { will-change: transform; transform: translateZ(0) }
 .bg-canvas, .bg-particles, .bg-grid { will-change: transform }
 
@@ -105,10 +107,8 @@ html { scroll-behavior: smooth }
     top: 0; left: 0;
     pointer-events: none;
     z-index: 9999;
-    will-change: transform;
     width: 22px; height: 28px;
     transition: opacity .15s;
-    /* no filter — drop-shadow causes per-frame rasterisation lag */
   }
   .mech-cursor svg { width: 100%; height: 100%; color: #fff; display: block }
   .mech-cursor.is-hover svg { color: #9CC8FF }
@@ -138,7 +138,7 @@ html { scroll-behavior: smooth }
 /* ─── Layout ─────────────────────────────────────────────── */
 .shell { position: relative; z-index: 1 }
 .container { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter) }
-.section { padding: var(--section-y) 0; position: relative }
+.section { padding: var(--section-y) 0; position: relative; content-visibility: auto; contain-intrinsic-size: 0 600px }
 .section + .section { border-top: 1px solid var(--line) }
 
 /* ─── Nav ────────────────────────────────────────────────── */
@@ -220,33 +220,39 @@ html { scroll-behavior: smooth }
   align-items: center;
 }
 
-/* Globe: absolutely placed on the right, bleeds off-container edge */
+/* Globe: pull inward so text overlaps its left side */
 .hero-globe-right {
   position: absolute;
-  right: calc(var(--gutter) * -1 - 60px);
+  right: 20px;   /* positive = inside container, moves globe left */
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: center;  /* pill centers under globe sphere */
 }
 
-/* pill sits below the globe sphere */
+/* pill: centered under the globe sphere via parent align-items:center */
 .hero-meta-pill {
   position: relative;
   margin-top: 28px;
   white-space: nowrap;
   z-index: 2;
+  align-self: center;  /* explicit center in case parent width varies */
 }
 
-/* Text column: z-index above globe, max-width extends into globe area */
+/* Text column: shifted right + up to overlap globe with name/bio */
 .hero-text-left {
   position: relative;
   z-index: 2;
-  max-width: 680px;
+  max-width: 800px;
+  margin-left: 48px;    /* push right into globe overlap zone */
+  margin-top: -80px;    /* lift up from flex center */
 }
+
+/* Social links stay within safe non-overlap zone */
+.hero-text-left .social { max-width: 460px }
 
 /* Subtle radial gradient behind text for readability over the globe */
 .hero-text-left::before {
@@ -353,8 +359,6 @@ html { scroll-behavior: smooth }
 .slogan strong { color: var(--fg); font-weight: 700 }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px }
 
-/* Social links capped so they don't overlap the globe */
-.hero-text-left .social { max-width: 500px }
 
 .globe { position: relative; overflow: visible }
 
@@ -366,7 +370,7 @@ html { scroll-behavior: smooth }
     transform: none; margin-top: 32px;
     width: 100%; justify-content: center;
   }
-  .hero-text-left { max-width: 100% }
+  .hero-text-left { max-width: 100%; margin-left: 0; margin-top: 0 }
   .hero-text-left::before { display: none }
 }
 

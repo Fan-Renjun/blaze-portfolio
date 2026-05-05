@@ -48,7 +48,7 @@ export function HeroSection() {
         </div>
 
         <div className="hero-globe-right" aria-hidden="true">
-          <Globe size={820} />
+          <Globe size={640} />
           <div className="globe-meta hero-meta-pill">
             <span className="dot-live" />
             <span>BLAZE FAN · 32.0584° N, 118.7965° E</span>

@@ -1,5 +1,6 @@
 export { Navbar }         from "./Navbar";
 export { ThemeFab }       from "./ThemeFab";
+export { CursorFab }      from "./CursorFab";
 export { TechCursor }     from "./TechCursor";
 export { ParticleField }  from "./ParticleField";
 export { Globe }          from "./Globe";

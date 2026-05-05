@@ -9,12 +9,12 @@ const C = {
 };
 
 // ─── tuning knobs ─────────────────────────────────────────────
-const MAX_PARTICLES   = 100;
-const AREA_PER_PART   = 13_000;
-const CONNECT_DIST    = 160;
+const MAX_PARTICLES   = 90;
+const AREA_PER_PART   = 14_000;
+const CONNECT_DIST    = 155;
 const MOUSE_RADIUS    = 180;
 const MOUSE_FORCE     = 0.55;
-const PARALLAX_RATIO  = 0.14;
+const PARALLAX_RATIO  = 0;     // 0 = truly fixed background, no scroll offset
 const BASE_SPEED      = 0.38;
 
 interface Particle {
@@ -157,9 +157,9 @@ export function ParticleField() {
       raf = requestAnimationFrame(tick);
     };
 
-    const onMouseMove  = (e: MouseEvent) => { mouse.x = e.clientX; mouse.y = e.clientY; };
-    const onMouseLeave = ()               => { mouse.x = -9999; mouse.y = -9999; };
-    const onScroll     = ()               => { scrollY = window.scrollY; };
+    const onMouseMove    = (e: MouseEvent) => { mouse.x = e.clientX; mouse.y = e.clientY; };
+    const onMouseLeave   = ()              => { mouse.x = -9999; mouse.y = -9999; };
+    const onScroll       = ()              => { scrollY = window.scrollY; };
 
     resize(); init(); tick();
 
