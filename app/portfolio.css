@@ -84,41 +84,45 @@ html[data-theme="light"] .portfolio {
 [data-theme="light"] .ar-arrow:hover,
 [data-theme="light"] .article-row:hover .ar-arrow { color: #000 }
 
-/* ─── Custom tech cursor (scoped to portfolio pages only) ─── */
+/* ─── Smooth scroll & GPU hints ─────────────────────────── */
+html { scroll-behavior: smooth }
+.globe { will-change: transform; transform: translateZ(0) }
+.bg-canvas, .bg-particles, .bg-grid { will-change: transform }
+
+/* ─── Mechanical cursor (scoped to .portfolio pages only) ── */
 @media (hover:hover) and (pointer:fine) {
-  /* cursor:none only when .portfolio wrapper is present in the page */
   html:has(.portfolio),
   html:has(.portfolio) body { cursor: none }
 
-  .portfolio a,
-  .portfolio button,
-  .portfolio .card,
-  .portfolio .photo,
-  .portfolio .article-row,
-  .portfolio .nav-link,
-  .portfolio .tag,
-  .portfolio [role="button"],
-  .portfolio input,
-  .portfolio textarea,
+  .portfolio a, .portfolio button, .portfolio .card, .portfolio .photo,
+  .portfolio .article-row, .portfolio .nav-link, .portfolio .tag,
+  .portfolio [role="button"], .portfolio input, .portfolio textarea,
   .portfolio select { cursor: none }
 
-  .cursor-reticle, .cursor-dot {
-    position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
-    transform: translate(-50%,-50%); will-change: transform;
-    mix-blend-mode: difference;
+  /* mechanical finger cursor */
+  .mech-cursor {
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    /* hotspot at tip (top-left of SVG) */
+    transform: translate(0px, 0px);
+    will-change: transform;
+    width: 22px; height: 28px;
+    transition: opacity .15s;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,.35));
   }
-  .cursor-reticle {
-    width: 28px; height: 28px;
-    transition: transform .18s cubic-bezier(.2,.8,.2,1), width .18s, height .18s, opacity .2s;
+  .mech-cursor svg {
+    width: 100%; height: 100%;
+    color: #fff;
+    display: block;
   }
-  .cursor-reticle svg { width: 100%; height: 100%; display: block; color: #fff; opacity: .9 }
-  .cursor-reticle.is-hover { width: 44px; height: 44px }
-  .cursor-reticle.is-hover svg { color: #fff; opacity: 1 }
-  .cursor-dot {
-    width: 4px; height: 4px; border-radius: 50%; background: #fff;
-    box-shadow: 0 0 8px rgba(255,255,255,.7);
+  /* hover state: accent glow */
+  .mech-cursor.is-hover {
+    filter: drop-shadow(0 0 6px var(--accent, #007AFF));
   }
-  .cursor-reticle.is-hidden, .cursor-dot.is-hidden { opacity: 0 }
+  .mech-cursor.is-hover svg { color: #9CC8FF }
+  .mech-cursor.is-hidden { opacity: 0 }
 }
 
 /* ─── Background canvas ──────────────────────────────────── */
@@ -205,6 +209,13 @@ html[data-theme="light"] .portfolio {
 }
 .tag.accent {
   border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
+}
+/* 紫色 tag（深色模式紫，浅色模式深紫） */
+.tag.violet {
+  border-color: #7C3AED; color: #A78BFA; background: rgba(124,58,237,.18);
+}
+[data-theme="light"] .tag.violet {
+  border-color: rgba(109,40,217,.4); color: #6D28D9; background: rgba(109,40,217,.08);
 }
 
 /* ─── Hero ───────────────────────────────────────────────── */

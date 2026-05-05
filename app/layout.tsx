@@ -11,8 +11,12 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Blaze Fan · AI Product Manager",
+  title: "范任君 · Blaze Fan",
   description: "AI 产品经理，视觉中国签约摄影师，专注于让 AI 在真实场景中创造价值。",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 const geistSans = Geist({

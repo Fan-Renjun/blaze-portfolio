@@ -36,7 +36,7 @@ export type TravelData = {
 };
 
 export const PROFILE: Profile = {
-  nameZh: "思齐",
+  nameZh: "范任君",
   nameEn: "Blaze Fan",
   role: "AI Product Manager",
   slogan: "真诚且勇敢，热烈而自由",
@@ -50,20 +50,24 @@ export const PROFILE: Profile = {
 
 export const SOCIAL: SocialLink[] = [
   {
-    id: "xhs", name: "小红书", handle: "@思齐", url: "https://www.xiaohongshu.com/user/profile/67872b5700000000080197e2",
+    id: "xhs", name: "小红书", handle: "@范任君", url: "https://www.xiaohongshu.com/user/profile/67872b5700000000080197e2",
     icon: (props) => (
+      // 小红书 logo — 书本 + 左侧红色书脊
       <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-        <path d="M3 4h18v16H3z" fill="none" stroke="currentColor" strokeWidth="1.4"/>
-        <path d="M7 9v6M7 9l3.4 6V9M14 9.5h3M14 12h2.6c.6 0 1 .4 1 1v1c0 .6-.4 1-1 1H14V9.5z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h11A1.5 1.5 0 0 1 19 3.5v17a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20.5V3.5z" opacity="0.15"/>
+        <rect x="5" y="2" width="3" height="20" rx="1.5"/>
+        <path d="M10 7h7M10 11h5M10 15h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
       </svg>
     ),
   },
   {
-    id: "jike", name: "即刻", handle: "@思齐", url: "https://web.okjike.com/u/5E556E63-1169-4B9A-A316-4D39CC526E91",
+    id: "jike", name: "即刻", handle: "@范任君", url: "https://web.okjike.com/u/5E556E63-1169-4B9A-A316-4D39CC526E91",
     icon: (props) => (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" {...props}>
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M9 9.5c.6 1.5 2.2 2.5 3.8 2.3M9 14.5c1 1.5 3 2 4.6 1.2"/>
+      // 即刻 logo — 圆形底 + 闪电形状
+      <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <circle cx="12" cy="12" r="10" opacity="0.15"/>
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M13.5 5.5 L9 13h4L10.5 18.5l7-9h-4.5z" strokeLinejoin="round"/>
       </svg>
     ),
   },

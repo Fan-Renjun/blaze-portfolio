@@ -26,7 +26,7 @@ export function HeroSection() {
 
             <div className="meta">
               {PROFILE.edu.map((e, i) => (
-                <span key={e.school} className={i === 0 ? "tag accent" : "tag"}>
+                <span key={e.school} className={i === 0 ? "tag violet" : "tag"}>
                   {e.school} · {e.degree}
                 </span>
               ))}
