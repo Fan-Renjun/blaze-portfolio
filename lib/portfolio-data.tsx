@@ -40,7 +40,7 @@ export const PROFILE: Profile = {
   nameEn: "Blaze Fan",
   role: "AI Product Manager",
   slogan: "真诚且勇敢，热烈而自由",
-  bio: "AI 产品经理，专注于让 AI 在真实场景中创造价值。在美团参与到店与到家业务的智能化升级，目前在阿里巴巴构建消费者侧的 AI Agent 体验。",
+  bio: "AI 产品经理，专注于让 AI 在真实场景中创造价值。在美团参与到店与到家业务的智能化升级，目前在阿里巴巴 · 飞猪构建旅行消费者侧的 AI Agent 体验。",
   edu: [
     { school: "南京大学", degree: "理学硕士", year: "M.Sc." },
     { school: "河海大学", degree: "工学学士", year: "B.Eng." },

@@ -1,8 +1,25 @@
 "use client";
+import { useEffect, useState } from "react";
 import { PROFILE, SOCIAL } from "@/lib/portfolio-data";
 import { Globe } from "./Globe";
 
+function useGlobeSize() {
+  const [size, setSize] = useState(640);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      // mobile: deliberately oversized so right 1/4 bleeds off-screen
+      setSize(w < 480 ? 300 : w < 640 ? 360 : w < 960 ? 420 : 640);
+    };
+    update();
+    window.addEventListener("resize", update, { passive: true });
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return size;
+}
+
 export function HeroSection() {
+  const globeSize = useGlobeSize();
   return (
     <section className="section hero" id="home" style={{ padding: 0 }}>
       <div className="container hero-split">
@@ -10,7 +27,8 @@ export function HeroSection() {
           <div className="hero-text-left">
             <span className="eyebrow">
               <span className="pulse" />
-              AI Product Manager · 2026
+              <span className="eyebrow-main">AI PRODUCT MANAGER</span>
+              <span className="eyebrow-year">· FROM 2023</span>
             </span>
             <h1 className="hero-title-left">
               <span className="line-greet">你好，我是</span>
@@ -48,7 +66,7 @@ export function HeroSection() {
         </div>
 
         <div className="hero-globe-right" aria-hidden="true">
-          <Globe size={640} />
+          <Globe size={globeSize} />
           <div className="globe-meta hero-meta-pill">
             <span className="dot-live" />
             <span>BLAZE FAN · 32.0584° N, 118.7965° E</span>

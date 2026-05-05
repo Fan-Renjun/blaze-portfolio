@@ -21,9 +21,29 @@ function getSizeClass(orientation: Photo["orientation"], index: number): string 
   return DEFAULT_CYCLE[index % DEFAULT_CYCLE.length];
 }
 
+const FILTERS = [
+  { label: "全部",     value: null },
+  { label: "自然风光", value: "自然风光" },
+  { label: "人物纪实", value: "人物纪实" },
+  { label: "城市街景", value: "城市街景" },
+] as const;
+
+type FilterValue = "自然风光" | "人物纪实" | "城市街景" | null;
+
+// sub text with highlighted credential
+const PhotoSub = () => (
+  <>
+    <span style={{ color: "var(--accent)", fontWeight: 700, letterSpacing: ".04em" }}>
+      视觉中国 签约摄影师
+    </span>
+    {" · 镜头是另一种产品笔记——用光影记录城市与自然的边界，在旅途中捕捉那些稍纵即逝的真实瞬间。"}
+  </>
+);
+
 export function PhotosSection() {
-  const [photos, setPhotos]         = useState<Photo[]>([]);
-  const [showAll, setShowAll]       = useState(false);
+  const [photos, setPhotos]               = useState<Photo[]>([]);
+  const [activeFilter, setActiveFilter]   = useState<FilterValue>(null);
+  const [showAll, setShowAll]             = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
 
   useEffect(() => {
@@ -35,21 +55,29 @@ export function PhotosSection() {
       .then(({ data }) => setPhotos((data as Photo[]) ?? []));
   }, []);
 
-  const visible = showAll ? photos : photos.slice(0, 5);
+  const handleFilter = (v: FilterValue) => {
+    setActiveFilter(v);
+    setShowAll(false);   // reset expand when switching filter
+  };
 
-  // Lightbox slides — only photos with image_url
-  const slides = photos
-    .filter((p) => !!p.image_url)
-    .map((p) => ({
+  const filtered = activeFilter
+    ? photos.filter(p => p.category === activeFilter)
+    : photos;
+
+  const visible = showAll ? filtered : filtered.slice(0, 5);
+
+  // Lightbox slides from filtered set
+  const slides = filtered
+    .filter(p => !!p.image_url)
+    .map(p => ({
       src: p.image_url as string,
       title: p.location ?? undefined,
       description: [p.category, p.orientation].filter(Boolean).join(" · ") || undefined,
     }));
 
-  // Map visible photo index → slide index (skip photos without image_url)
-  const toSlideIndex = (visibleIdx: number): number => {
+  const toSlideIndex = (visibleIdx: number) => {
     const photo = visible[visibleIdx];
-    return slides.findIndex((s) => s.src === photo.image_url);
+    return slides.findIndex(s => s.src === photo.image_url);
   };
 
   return (
@@ -59,18 +87,33 @@ export function PhotosSection() {
           <SectionHead
             eyebrow="PHOTOGRAPHY / 摄影"
             title="按下快门那一刻"
-            sub="视觉中国签约摄影师 · 镜头是另一种产品笔记——用光影记录城市与自然的边界，在旅途中捕捉那些稍纵即逝的真实瞬间。"
-            action={
-              photos.length > 5 ? (
-                <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
-                  <span>{showAll ? "收起画廊" : "完整画廊"}</span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                    <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
-                  </svg>
-                </button>
-              ) : null
-            }
+            sub={<PhotoSub />}
           />
+        </Reveal>
+
+        {/* ── 筛选 + 展开 同行 ── */}
+        <Reveal delay={30}>
+          <div className="photo-filter-bar">
+            <div className="photo-filters">
+              {FILTERS.map(f => (
+                <button
+                  key={String(f.value)}
+                  className={`photo-filter-btn${activeFilter === f.value ? " active" : ""}`}
+                  onClick={() => handleFilter(f.value as FilterValue)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {filtered.length > 5 && (
+              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
+                <span>{showAll ? "收起画廊" : "完整画廊"}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
+                </svg>
+              </button>
+            )}
+          </div>
         </Reveal>
 
         <Reveal delay={60}>
@@ -102,6 +145,11 @@ export function PhotosSection() {
                 </div>
               );
             })}
+            {visible.length === 0 && (
+              <p style={{ color: "var(--fg-3)", fontSize: 14, gridColumn: "1/-1", padding: "40px 0" }}>
+                该分类暂无照片。
+              </p>
+            )}
           </div>
         </Reveal>
       </div>

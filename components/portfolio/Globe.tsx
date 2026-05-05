@@ -72,80 +72,80 @@ interface GlobeProps {
 }
 
 export function Globe({ size = 360 }: GlobeProps) {
-  const ref = useRef<SVGSVGElement>(null);
+  const cvRef  = useRef<HTMLCanvasElement>(null);
+  // Reduced from 5200 → 3000; canvas renders all in one draw pass
   const dotsRef = useRef<[number, number, number][] | null>(null);
-  if (!dotsRef.current) dotsRef.current = buildDots(5200);
+  if (!dotsRef.current) dotsRef.current = buildDots(3000);
   const dots = dotsRef.current;
 
   useEffect(() => {
-    const svg = ref.current;
-    if (!svg) return;
-    const t0 = performance.now();
-    let raf = 0;
-    let visible = true;
-    let lastFrameTime = 0;
-    const FRAME_MS = 1000 / 20; // cap at 20 fps — rotation is slow, imperceptible
+    const cv = cvRef.current;
+    if (!cv) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const full = size + 240;
+    cv.width  = full * dpr;
+    cv.height = full * dpr;
+    const ctx = cv.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    // Translate so coordinate origin matches the SVG viewBox offset
+    ctx.translate(120, 120);
 
-    // Cache circle elements once — avoids 5200-node querySelectorAll every frame
-    const circles = Array.from(svg.querySelectorAll<SVGCircleElement>(".gd"));
+    const t0 = performance.now();
+    let raf = 0, visible = true, lastT = 0;
+    const FPS = 1000 / 24;
 
     const render = (now: number) => {
-      if (!visible) { raf = 0; return; }              // stop loop when off-screen
+      if (!visible) { raf = 0; return; }
       raf = requestAnimationFrame(render);
-      if (now - lastFrameTime < FRAME_MS) return;     // skip frame if too soon
-      lastFrameTime = now;
+      if (now - lastT < FPS) return;
+      lastT = now;
 
-      const a = ((now - t0) / 45000) * Math.PI * 2;
+      ctx.clearRect(-120, -120, full, full);
+
+      const a  = ((now - t0) / 45000) * Math.PI * 2;
       const cosA = Math.cos(a), sinA = Math.sin(a);
       const tilt = -15 * Math.PI / 180;
       const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
-      const R = size / 2 - 14;
+      const R  = size / 2 - 14;
       const cx = size / 2, cy = size / 2;
 
+      // Single batched draw — no DOM mutations
       for (let i = 0; i < dots.length; i++) {
         const [x0, y0, z0] = dots[i];
         const x1 = x0 * cosA + z0 * sinA;
         const z1 = -x0 * sinA + z0 * cosA;
         const y2 = y0 * cosT - z1 * sinT;
         const z2 = y0 * sinT + z1 * cosT;
+        if (z2 < -0.05) continue;
         const depth = (z2 + 1) / 2;
-        const c = circles[i];
-        if (!c) continue;
-        if (z2 < -0.05) {
-          c.setAttribute("opacity", "0");
-        } else {
-          c.setAttribute("cx", (cx + x1 * R).toFixed(1));
-          c.setAttribute("cy", (cy - y2 * R).toFixed(1));
-          c.setAttribute("r",  (0.4 + depth).toFixed(1));
-          c.setAttribute("opacity", (0.18 + depth * 0.55).toFixed(2));
-        }
+        ctx.beginPath();
+        ctx.arc(cx + x1 * R, cy - y2 * R, 0.4 + depth, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${(0.18 + depth * 0.55).toFixed(2)})`;
+        ctx.fill();
       }
     };
 
-    // IntersectionObserver — single RAF chain, no double-start bug
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
       if (visible && raf === 0) raf = requestAnimationFrame(render);
     }, { threshold: 0.01 });
-    io.observe(svg);
+    io.observe(cv);
     raf = requestAnimationFrame(render);
-
     return () => { cancelAnimationFrame(raf); io.disconnect(); };
   }, [dots, size]);
 
-  const R = size / 2 - 14;
+  const R  = size / 2 - 14;
   const cx = size / 2, cy = size / 2;
-  const VB = size + 240;
-  const off = 120;
+  const off = 120, VB = size + 240;
 
   return (
     <div className="globe" style={{ width: size, height: size }}>
+      {/* Static SVG — sphere gradients & glow halos, no animated elements */}
       <svg
-        ref={ref}
         viewBox={`${-off} ${-off} ${VB} ${VB}`}
-        width={size + 240}
-        height={size + 240}
-        style={{ overflow: "visible", display: "block", position: "absolute", left: -120, top: -120, pointerEvents: "none" }}
+        width={VB} height={VB}
+        style={{ overflow: "visible", display: "block", position: "absolute", left: -off, top: -off, pointerEvents: "none" }}
+        aria-hidden="true"
       >
         <defs>
           <radialGradient id="rim" cx="50%" cy="50%" r="50%">
@@ -186,12 +186,17 @@ export function Globe({ size = 360 }: GlobeProps) {
         <circle cx={cx} cy={cy} r={R}        fill="url(#globeShade)"/>
         <circle cx={cx} cy={cy} r={R}        fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="1.2" opacity="0.72"/>
         <circle cx={cx} cy={cy} r={R + 1}    fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="18"  opacity="0.28" filter="url(#rimGlow)"/>
-        <g>
-          {dots.map((_, i) => (
-            <circle key={i} className="gd" cx={cx} cy={cy} r="1" fill="var(--globe-dot,#FFFFFF)" />
-          ))}
-        </g>
       </svg>
+      {/* Canvas — animated dot field; CSS size locked so DPR scaling doesn't distort */}
+      <canvas
+        ref={cvRef}
+        style={{
+          display: "block", position: "absolute", left: -off, top: -off,
+          width: VB, height: VB,   // CSS display size = SVG display size
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      />
     </div>
   );
 }

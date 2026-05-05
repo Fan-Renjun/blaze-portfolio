@@ -91,29 +91,8 @@ html, body { overscroll-behavior: none }
 .globe { will-change: transform; transform: translateZ(0) }
 .bg-canvas, .bg-particles, .bg-grid { will-change: transform }
 
-/* ─── Mechanical cursor (scoped to .portfolio pages only) ── */
-@media (hover:hover) and (pointer:fine) {
-  html:has(.portfolio),
-  html:has(.portfolio) body { cursor: none }
-
-  .portfolio a, .portfolio button, .portfolio .card, .portfolio .photo,
-  .portfolio .article-row, .portfolio .nav-link, .portfolio .tag,
-  .portfolio [role="button"], .portfolio input, .portfolio textarea,
-  .portfolio select { cursor: none }
-
-  /* mechanical finger cursor */
-  .mech-cursor {
-    position: fixed;
-    top: 0; left: 0;
-    pointer-events: none;
-    z-index: 9999;
-    width: 22px; height: 28px;
-    transition: opacity .15s;
-  }
-  .mech-cursor svg { width: 100%; height: 100%; color: #fff; display: block }
-  .mech-cursor.is-hover svg { color: #9CC8FF }
-  .mech-cursor.is-hidden { opacity: 0 }
-}
+/* Custom CSS cursor is injected by TechCursor.tsx via encodeURIComponent + style tag.
+   No CSS rules needed here — cursor: none + custom url() are set inline by JS. */
 
 /* ─── Background canvas ──────────────────────────────────── */
 .bg-canvas {
@@ -280,7 +259,7 @@ html, body { overscroll-behavior: none }
   font-size: clamp(40px,6vw,80px); font-weight: 700;
   letter-spacing: -.03em; line-height: 1.05; margin: 20px 0 28px;
 }
-.hero-title-left .line-greet { font-size: .36em; font-weight: 500; color: var(--fg-3); letter-spacing: .01em; margin-bottom: 4px }
+.hero-title-left .line-greet { font-size: .24em; font-weight: 400; color: var(--fg-4); letter-spacing: .08em; margin-bottom: 6px }
 
 /* Metallic gradient on Chinese name and "Fan." */
 .hero-title-left .line-zh {
@@ -344,6 +323,19 @@ html, body { overscroll-behavior: none }
   border: 1px solid var(--line); background: var(--card);
   backdrop-filter: blur(8px);
 }
+/* Prominent label inside eyebrow pill */
+.eyebrow-main {
+  font-size: 13px; font-weight: 800;
+  letter-spacing: .24em;
+  color: var(--fg);
+  text-shadow: 0 0 24px var(--accent-soft), 0 0 8px rgba(255,255,255,.15);
+}
+.eyebrow-year {
+  font-size: 10px; font-weight: 500;
+  letter-spacing: .16em;
+  color: var(--fg-3);
+  margin-left: 2px;
+}
 .eyebrow .pulse {
   width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
   box-shadow: 0 0 0 0 var(--accent);
@@ -362,16 +354,80 @@ html, body { overscroll-behavior: none }
 
 .globe { position: relative; overflow: visible }
 
-/* Mobile: stack vertically */
-@media (max-width:960px) {
-  .hero-split { flex-direction: column; padding-top: 100px; padding-bottom: 40px }
-  .hero-globe-right {
-    position: relative; right: auto; top: auto;
-    transform: none; margin-top: 32px;
-    width: 100%; justify-content: center;
+/* ─── Tablet (≤959px) — keep side-by-side, scale down ──────── */
+@media (max-width: 959px) {
+  .hero-split { padding-top: 72px; min-height: 100svh }
+  .hero-globe-right { right: 0px }
+  .hero-text-left { max-width: 52%; margin-left: 12px; margin-top: -50px }
+  .hero-text-left .social { max-width: 100% }
+  .hero-title-left { font-size: clamp(30px, 5.5vw, 60px) }
+  .s-title { font-size: clamp(24px, 4vw, 52px) }
+}
+
+/* ─── Mobile (≤639px) — oversized globe, left 3/4 visible ───── */
+@media (max-width: 639px) {
+  .hero-split { padding-top: 64px }
+
+  /* Globe: size=360px → right edge 90px off-screen → 270px visible (3/4) */
+  .hero-globe-right { right: -90px }
+
+  /* Text occupies left portion; gradient gives readability over globe */
+  .hero-text-left {
+    max-width: 62%;
+    margin-left: 8px;
+    margin-top: -20px;
   }
-  .hero-text-left { max-width: 100%; margin-left: 0; margin-top: 0 }
-  .hero-text-left::before { display: none }
+  .hero-text-left::before {
+    background: radial-gradient(ellipse 95% 115% at 12% 50%,
+      rgba(10,10,11,.92) 0%,
+      rgba(10,10,11,.65) 50%,
+      transparent 78%
+    );
+  }
+
+  /* Pill: smaller font, still visible */
+  .hero-meta-pill { font-size: 9px; padding: 6px 10px; gap: 6px; letter-spacing: .1em }
+
+  .hero-title-left { font-size: clamp(22px, 9vw, 42px) }
+  .slogan { font-size: 13px; line-height: 1.7; max-width: 100% }
+  .eyebrow { font-size: 9px; padding: 5px 10px; gap: 7px }
+  .eyebrow-main { font-size: 10px }
+  .eyebrow-year { display: none }
+  .meta { gap: 6px }
+
+  /* section headings */
+  .s-title { font-size: clamp(22px, 6vw, 40px) }
+  .s-sub { font-size: 13px }
+
+  /* timeline */
+  .tl-role { font-size: 16px }
+
+  /* project grid */
+  .grid-projects { grid-template-columns: 1fr }
+
+  /* article row */
+  .article-row { grid-template-columns: 90px 1fr; gap: 12px }
+
+  /* gallery */
+  .gallery { grid-auto-rows: 88px }
+
+  /* nav pill */
+  .nav { max-width: calc(100vw - 24px); overflow-x: auto; white-space: nowrap }
+  .nav-links { gap: 0 }
+  .nav-link { padding: 6px 9px; font-size: 12px }
+
+  /* travel & fitness */
+  .travel-list { grid-template-columns: 1fr }
+  .travel-grid { grid-template-columns: 1fr }
+}
+
+/* ─── Very small (≤399px) ────────────────────────────────────── */
+@media (max-width: 399px) {
+  /* Globe: size=300px → right edge 75px off-screen → 225px visible (3/4) */
+  .hero-globe-right { right: -75px }
+  .hero-text-left { max-width: 64%; margin-left: 6px }
+  .hero-title-left { font-size: clamp(20px, 10vw, 34px) }
+  .social a { padding: 8px 10px; font-size: 11px }
 }
 
 /* ─── Social bar ─────────────────────────────────────────── */
@@ -455,6 +511,27 @@ html, body { overscroll-behavior: none }
 @media (max-width:720px) {
   .article-row { grid-template-columns: 1fr; gap: 6px; padding: 18px 0 }
   .ar-arrow { display: none }
+}
+
+/* ─── Photo filter bar ───────────────────────────────────── */
+.photo-filter-bar {
+  display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 24px;
+}
+.photo-filters {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.photo-filter-btn {
+  padding: 6px 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card);
+  color: var(--fg-3); font: 500 12px/1 var(--font-mono);
+  letter-spacing: .08em; cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.photo-filter-btn:hover { border-color: var(--line-2); color: var(--fg); background: var(--card-hi) }
+.photo-filter-btn.active {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
 }
 
 /* ─── Photo gallery ──────────────────────────────────────── */
@@ -794,6 +871,127 @@ html, body { overscroll-behavior: none }
 .md-body th,.md-body td { padding: 8px 12px; border: 1px solid var(--line); text-align: left }
 .md-body th { background: var(--card); color: var(--fg); font-weight: 600 }
 .md-body img { max-width: 100%; border-radius: var(--radius-sm); margin: 8px 0 }
+
+/* ─── BorderGlow component ───────────────────────────────── */
+.border-glow-card {
+  --edge-proximity: 0; --cursor-angle: 45deg;
+  --edge-sensitivity: 30;
+  --color-sensitivity: calc(var(--edge-sensitivity) + 20);
+  --border-radius: 16px; --glow-padding: 38px; --cone-spread: 25;
+  position: relative; border-radius: var(--border-radius);
+  isolation: isolate; transform: translate3d(0,0,0.01px); display: grid;
+  border: 1px solid rgba(255,255,255,.12);
+  background: var(--card-bg, #0e0e12);
+  overflow: visible;
+  box-shadow: rgba(0,0,0,.1) 0 1px 2px, rgba(0,0,0,.1) 0 4px 8px, rgba(0,0,0,.1) 0 16px 32px;
+}
+.border-glow-card::before, .border-glow-card::after, .border-glow-card > .edge-light {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  transition: opacity .25s ease-out; z-index: -1;
+}
+.border-glow-card:not(:hover):not(.sweep-active)::before,
+.border-glow-card:not(:hover):not(.sweep-active)::after,
+.border-glow-card:not(:hover):not(.sweep-active) > .edge-light {
+  opacity: 0; transition: opacity .75s ease-in-out;
+}
+/* mesh-gradient border */
+.border-glow-card::before {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--card-bg,#0e0e12) 0 100%) padding-box,
+    linear-gradient(rgba(255,255,255,0) 0 100%) border-box,
+    var(--gradient-one) border-box, var(--gradient-two) border-box,
+    var(--gradient-three) border-box, var(--gradient-four) border-box,
+    var(--gradient-five) border-box, var(--gradient-six) border-box,
+    var(--gradient-seven) border-box, var(--gradient-base) border-box;
+  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  mask-image: conic-gradient(from var(--cursor-angle) at center,
+    black calc(var(--cone-spread)*1%),
+    transparent calc((var(--cone-spread)+15)*1%),
+    transparent calc((100 - var(--cone-spread) - 15)*1%),
+    black calc((100 - var(--cone-spread))*1%));
+}
+/* gradient fill */
+.border-glow-card::after {
+  border: 1px solid transparent;
+  background:
+    var(--gradient-one) padding-box, var(--gradient-two) padding-box,
+    var(--gradient-three) padding-box, var(--gradient-four) padding-box,
+    var(--gradient-five) padding-box, var(--gradient-six) padding-box,
+    var(--gradient-seven) padding-box, var(--gradient-base) padding-box;
+  mask-image:
+    linear-gradient(to bottom, black, black),
+    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+    radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
+    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+  mask-composite: subtract, add, add, add;
+  opacity: calc(var(--fill-opacity,.4) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  mix-blend-mode: soft-light;
+}
+/* outer glow ring */
+.border-glow-card > .edge-light {
+  inset: calc(var(--glow-padding) * -1); pointer-events: none; z-index: 1;
+  mask-image: conic-gradient(from var(--cursor-angle) at center,
+    black 2.5%, transparent 10%, transparent 90%, black 97.5%);
+  opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+  mix-blend-mode: plus-lighter;
+}
+.border-glow-card > .edge-light::before {
+  content: ""; position: absolute; inset: var(--glow-padding);
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color),
+    inset 0 0 3px 0 var(--glow-color-50),
+    inset 0 0 8px 0 var(--glow-color-40),
+    inset 0 0 20px 0 var(--glow-color-30),
+    inset 0 0 30px 2px var(--glow-color-20),
+    0 0 3px 0 var(--glow-color-50),
+    0 0 8px 0 var(--glow-color-40),
+    0 0 20px 0 var(--glow-color-30),
+    0 0 30px 2px var(--glow-color-20);
+}
+.border-glow-inner {
+  display: flex; flex-direction: column;
+  position: relative; overflow: visible; z-index: 1;
+}
+/* wrapper mode: transparent bg + no double-border */
+.border-glow-wrap.border-glow-card {
+  background: transparent; border: none; box-shadow: none;
+}
+.border-glow-wrap.border-glow-card::before {
+  background:
+    linear-gradient(transparent 0 100%) padding-box,
+    linear-gradient(rgba(255,255,255,0) 0 100%) border-box,
+    var(--gradient-one) border-box, var(--gradient-two) border-box,
+    var(--gradient-three) border-box, var(--gradient-four) border-box,
+    var(--gradient-five) border-box, var(--gradient-six) border-box,
+    var(--gradient-seven) border-box, var(--gradient-base) border-box;
+}
+.border-glow-wrap .border-glow-inner { overflow: visible }
+
+/* ─── MagicCard border-glow ──────────────────────────────── */
+.magic-glow-card {
+  --glow-x: 50%; --glow-y: 50%;
+  --glow-intensity: 0; --glow-radius: 280px;
+  position: relative;
+}
+/* Border-only glow via mask technique */
+.magic-glow-card::after {
+  content: ""; position: absolute; inset: 0; padding: 1px;
+  background: radial-gradient(
+    var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+    rgba(0,122,255, calc(var(--glow-intensity) * 0.9)) 0%,
+    rgba(0,122,255, calc(var(--glow-intensity) * 0.4)) 35%,
+    transparent 65%
+  );
+  border-radius: inherit;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none; z-index: 1;
+}
 
 /* ─── Density modes ──────────────────────────────────────── */
 [data-density="comfortable"] .section { padding: calc(var(--section-y) * 1.2) 0 }

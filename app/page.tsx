@@ -5,7 +5,7 @@ import { SplashCursor } from "@/components/portfolio/SplashCursor";
 
 export default function Home() {
   const [theme, setTheme]       = useState("dark");
-  const [cursorFx, setCursorFx] = useState(true);   // fluid cursor on by default
+  const [cursorFx, setCursorFx] = useState(false);  // fluid cursor off by default
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);

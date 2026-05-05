@@ -18,17 +18,12 @@ export function ProjectCard({ p, onOpen }: ProjectCardProps) {
     <div className="card" onMouseMove={onMove} onClick={() => onOpen(p)}>
       {p.image_url && (
         <div style={{
-          margin: "-28px -28px 20px",
-          height: 160,
-          overflow: "hidden",
-          borderRadius: "var(--radius) var(--radius) 0 0",
+          margin: "-28px -28px 20px", height: 160,
+          overflow: "hidden", borderRadius: "var(--radius) var(--radius) 0 0",
           flexShrink: 0,
         }}>
-          <img
-            src={p.image_url}
-            alt={p.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          <img src={p.image_url} alt={p.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
       )}
       <div className="corner">

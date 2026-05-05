@@ -104,51 +104,46 @@ export function ParticleField() {
         py[i] = ((p.y - yOff) % h + h) % h;
       }
 
-      // connection lines with shadow glow
-      ctx.save();
-      ctx.shadowColor = `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},0.9)`;
-      ctx.shadowBlur  = 8;
-
+      // connection lines — no shadowBlur (forces GPU rasterize every frame)
       const DIST2 = CONNECT_DIST * CONNECT_DIST;
+      // Batch all lines in one path per alpha bucket to reduce state changes
+      ctx.lineWidth = 0.8;
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j < parts.length; j++) {
           const dx = px[i] - px[j];
           const dy = py[i] - py[j];
           const d2 = dx * dx + dy * dy;
           if (d2 >= DIST2) continue;
-
           const t = 1 - d2 / DIST2;
-          const bA = Math.sin(parts[i].phase + time * parts[i].bFreq);
-          const bB = Math.sin(parts[j].phase + time * parts[j].bFreq);
-          const alpha = t * t * 0.55 * (0.75 + (bA + bB) * 0.125);
-
-          ctx.strokeStyle = `rgba(${C.line[0]},${C.line[1]},${C.line[2]},${alpha.toFixed(3)})`;
-          ctx.lineWidth   = 0.7 + t * 0.9;
+          const alpha = t * t * 0.5;
+          ctx.strokeStyle = `rgba(${C.line[0]},${C.line[1]},${C.line[2]},${alpha.toFixed(2)})`;
           ctx.beginPath();
           ctx.moveTo(px[i], py[i]);
           ctx.lineTo(px[j], py[j]);
           ctx.stroke();
         }
       }
-      ctx.restore();
 
-      // particles
+      // particles — skip halo gradient for dim particles (bright ones keep it)
       for (let i = 0; i < parts.length; i++) {
         const p = parts[i];
         const breath   = Math.sin(p.phase + time * p.bFreq);
-        const bOpacity = 0.45 + breath * 0.30;
-        const bRadius  = p.r * (1 + breath * 0.28);
-        const haloR    = bRadius * (p.bright ? 14 : 7);
+        const bOpacity = 0.45 + breath * 0.28;
+        const bRadius  = p.r * (1 + breath * 0.22);
 
-        const g = ctx.createRadialGradient(px[i], py[i], 0, px[i], py[i], haloR);
-        g.addColorStop(0, `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},${((p.bright ? 0.72 : 0.42) * bOpacity).toFixed(3)})`);
-        g.addColorStop(1, `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(px[i], py[i], haloR, 0, Math.PI * 2);
-        ctx.fill();
+        if (p.bright) {
+          // Full halo only for bright "hub" particles (22% of total)
+          const haloR = bRadius * 10;
+          const g = ctx.createRadialGradient(px[i], py[i], 0, px[i], py[i], haloR);
+          g.addColorStop(0, `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},${(0.65 * bOpacity).toFixed(2)})`);
+          g.addColorStop(1, `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(px[i], py[i], haloR, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
-        ctx.fillStyle = `rgba(${C.core[0]},${C.core[1]},${C.core[2]},${(bOpacity * (p.bright ? 1.0 : 0.82)).toFixed(3)})`;
+        ctx.fillStyle = `rgba(${C.core[0]},${C.core[1]},${C.core[2]},${(bOpacity * (p.bright ? 1.0 : 0.75)).toFixed(2)})`;
         ctx.beginPath();
         ctx.arc(px[i], py[i], bRadius, 0, Math.PI * 2);
         ctx.fill();

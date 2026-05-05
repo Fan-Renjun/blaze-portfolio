@@ -1,8 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { TRAVEL, type TravelCity } from "@/lib/portfolio-data";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
+import { MagicCard, BentoSpotlight } from "./MagicCard";
 
 function TravelMiniMap({ cities }: { cities: TravelCity[] }) {
   const W = 640, H = 320;
@@ -47,6 +48,7 @@ function TravelMiniMap({ cities }: { cities: TravelCity[] }) {
 
 export function TravelSection() {
   const [showAll, setShowAll] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
   const visible = showAll ? TRAVEL.recent : TRAVEL.recent.slice(0, 6);
 
   return (
@@ -91,9 +93,23 @@ export function TravelSection() {
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="travel-list">
+          <div className="travel-list" ref={listRef}>
+            <BentoSpotlight
+              containerRef={listRef}
+              cardSelector=".magic-glow-card"
+              spotlightRadius={280}
+              glowColor="0, 122, 255"
+            />
             {visible.map((c) => (
-              <div className="travel-card" key={c.id}>
+              <MagicCard
+                key={c.id}
+                className="travel-card magic-glow-card"
+                glowColor="0, 122, 255"
+                particleCount={6}
+                enableTilt={true}
+                enableMagnetism={true}
+                clickEffect={true}
+              >
                 <div className="tc-meta">
                   <span className="tc-year">{c.year}</span>
                   <span className="tc-coord">
@@ -103,7 +119,7 @@ export function TravelSection() {
                 <div className="tc-city">{c.city}</div>
                 <div className="tc-country">{c.country}</div>
                 <div className="tc-notes">{c.notes}</div>
-              </div>
+              </MagicCard>
             ))}
           </div>
         </Reveal>
