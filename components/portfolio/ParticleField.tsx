@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 // ─── colour palettes (theme-aware) ───────────────────────────
 const DARK_C  = { core: [180, 220, 255] as const, glow: [ 80, 160, 255] as const, line: [100, 170, 255] as const };
-const LIGHT_C = { core: [ 20,  80, 180] as const, glow: [  0,  90, 200] as const, line: [ 30, 100, 200] as const };
+const LIGHT_C = { core: [ 30,  30,  40] as const, glow: [ 50,  50,  65] as const, line: [ 40,  40,  55] as const };
 
 function getColors() {
   return document.documentElement.getAttribute("data-theme") === "light" ? LIGHT_C : DARK_C;

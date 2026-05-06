@@ -1,202 +1,333 @@
 "use client";
 import { useEffect, useRef } from "react";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-const LAND_MASK: [number, number, [number, number][]][] = [
-  [55, 70,  [[-160,-60]]],
-  [45, 55,  [[-130,-55]]],
-  [35, 45,  [[-125,-70]]],
-  [25, 35,  [[-118,-78]]],
-  [15, 25,  [[-110,-85]]],
-  [10, 15,  [[-90,-78]]],
-  [5, 12,   [[-80,-60]]],
-  [-5, 5,   [[-78,-50]]],
-  [-15,-5,  [[-78,-40]]],
-  [-25,-15, [[-72,-40]]],
-  [-35,-25, [[-72,-55]]],
-  [-45,-35, [[-74,-62]]],
-  [-55,-45, [[-74,-66]]],
-  [55, 70,  [[10,40]]],
-  [45, 55,  [[-5,45]]],
-  [35, 45,  [[-10,40]]],
-  [25, 35,  [[-10,35]]],
-  [15, 25,  [[-15,40]]],
-  [5, 15,   [[-15,45]]],
-  [-5, 5,   [[8,42]]],
-  [-15,-5,  [[12,40]]],
-  [-25,-15, [[14,36]]],
-  [-35,-25, [[18,32]]],
-  [25, 45,  [[40,75]]],
-  [15, 25,  [[40,75]]],
-  [55, 75,  [[40,170]]],
-  [45, 55,  [[55,140]]],
-  [25, 45,  [[75,135]]],
-  [15, 25,  [[75,122]]],
-  [5, 15,   [[95,125]]],
-  [-5, 5,   [[100,120]]],
-  [10, 25,  [[68,90]]],
-  [-10, 0,  [[95,140]]],
-  [-25,-10, [[110,155]]],
-  [-35,-25, [[112,150]]],
-];
+// Canvas is OVERFLOW× larger than the logical size so rim spheres
+// (r up to 1.22) render fully without frustum clipping.
+const OVERFLOW  = 1.42;
+const CAM_HALF  = 1.1 * OVERFLOW; // orthographic frustum half-extent ≈ 1.562
 
-function isLand(latDeg: number, lngDeg: number): boolean {
-  let lng = lngDeg;
-  while (lng > 180) lng -= 360;
-  while (lng < -180) lng += 360;
-  for (const [a, b, ranges] of LAND_MASK) {
-    if (latDeg >= a && latDeg < b) {
-      for (const [s, e] of ranges) if (lng >= s && lng < e) return true;
-    }
+// Accent colours per theme
+const ACCENT_DARK  = new THREE.Vector3(0.369, 0.416, 0.824); // #5E6AD2
+const ACCENT_LIGHT = new THREE.Vector3(0.40,  0.40,  0.45);  // neutral gray
+
+function getAccent() {
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? ACCENT_LIGHT : ACCENT_DARK;
+}
+
+// ── Vertex shader ─────────────────────────────────────────
+const VERT = /* glsl */`
+  uniform sampler2D u_map_tex;
+  uniform float u_dot_size;
+  uniform float u_time_since_hover;
+  uniform vec3  u_pointer;
+  #define PI 3.14159265359
+  varying float vOpacity;
+  varying vec2  vUv;
+
+  void main() {
+    vUv = uv;
+
+    // land mask: only show dots over land
+    float visibility = step(.2, texture2D(u_map_tex, uv).r);
+    gl_PointSize = visibility * u_dot_size;
+
+    // depth-based opacity (back dots = dimmer)
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vOpacity = 1.0 / length(mvPosition.xyz) - .7;
+    vOpacity = clamp(vOpacity, .04, 1.0);
+
+    // hover ripple (replaces click ripple from original)
+    float t    = max(0., u_time_since_hover - .1);
+    float dist = 1. - .5 * length(position - u_pointer);
+    float damp = 1. / (1. + 20. * t);
+    float amp  = .07 * damp * sin(5. * t * (1. + 2. * dist) - PI);
+    amp *= 1. - smoothstep(.8, 1., dist);
+
+    vec3 pos = position * (1. + amp);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
   }
-  return false;
-}
+`;
 
-function buildDots(count = 1200): [number, number, number][] {
-  const dots: [number, number, number][] = [];
-  const phiStep = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const r = Math.sqrt(1 - y * y);
-    const theta = phiStep * i;
-    const x = Math.cos(theta) * r;
-    const z = Math.sin(theta) * r;
-    const lat = Math.asin(y) * 180 / Math.PI;
-    const lng = Math.atan2(z, x) * 180 / Math.PI;
-    if (isLand(lat, lng)) dots.push([x, y, z]);
+// ── Fragment shader ───────────────────────────────────────
+const FRAG = /* glsl */`
+  uniform vec3  u_color;
+  varying float vOpacity;
+
+  void main() {
+    float d   = length(gl_PointCoord.xy - vec2(.5));
+    // Soft alpha falloff — no hard discard, prevents sharp dot edges
+    float dot = 1. - smoothstep(.28, .50, d);
+    if (dot < 0.01) discard;
+    gl_FragColor = vec4(u_color, dot * vOpacity);
   }
-  return dots;
-}
+`;
 
-interface GlobeProps {
-  size?: number;
-}
+interface GlobeProps { size?: number }
 
 export function Globe({ size = 360 }: GlobeProps) {
-  const cvRef  = useRef<HTMLCanvasElement>(null);
-  // Reduced from 5200 → 3000; canvas renders all in one draw pass
-  const dotsRef = useRef<[number, number, number][] | null>(null);
-  if (!dotsRef.current) dotsRef.current = buildDots(3000);
-  const dots = dotsRef.current;
+  const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const cv = cvRef.current;
-    if (!cv) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const full = size + 240;
-    cv.width  = full * dpr;
-    cv.height = full * dpr;
-    const ctx = cv.getContext("2d")!;
-    ctx.scale(dpr, dpr);
-    // Translate so coordinate origin matches the SVG viewBox offset
-    ctx.translate(120, 120);
+    const container = mountRef.current;
+    if (!container) return;
 
-    const t0 = performance.now();
-    let raf = 0, visible = true, lastT = 0;
-    const FPS = 1000 / 24;
+    // ── Renderer ────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);   // fully transparent clear — required for alpha:true
+    container.appendChild(renderer.domElement);
 
-    const render = (now: number) => {
-      if (!visible) { raf = 0; return; }
-      raf = requestAnimationFrame(render);
-      if (now - lastT < FPS) return;
-      lastT = now;
+    // ── Scene / Camera ──────────────────────────────────────
+    const scene  = new THREE.Scene();
+    // CAM_HALF expanded so rim spheres (r≤1.22) never hit the frustum edge
+    const camera = new THREE.OrthographicCamera(-CAM_HALF, CAM_HALF, CAM_HALF, -CAM_HALF, 0, 3);
+    camera.position.z = 1.1;
 
-      ctx.clearRect(-120, -120, full, full);
+    // ── OrbitControls ───────────────────────────────────────
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enablePan    = false;
+    controls.enableZoom   = false;
+    controls.enableDamping = true;
+    controls.autoRotate   = true;
+    controls.autoRotateSpeed = 0.6;
+    controls.minPolarAngle = 0.4 * Math.PI;
+    controls.maxPolarAngle = 0.4 * Math.PI;
 
-      const a  = ((now - t0) / 45000) * Math.PI * 2;
-      const cosA = Math.cos(a), sinA = Math.sin(a);
-      const tilt = -15 * Math.PI / 180;
-      const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
-      const R  = size / 2 - 14;
-      const cx = size / 2, cy = size / 2;
+    // ── Shader material (created before texture loads) ──────
+    const material = new THREE.ShaderMaterial({
+      vertexShader:   VERT,
+      fragmentShader: FRAG,
+      uniforms: {
+        u_map_tex:         { value: null },
+        u_dot_size:        { value: 0 },
+        u_color:           { value: getAccent() },
+        u_pointer:         { value: new THREE.Vector3(0, 0, 1) },
+        u_time_since_hover:{ value: 99 },   // large → no initial ripple
+      },
+      transparent: true,
+      depthWrite:  false,
+    });
 
-      // Single batched draw — no DOM mutations
-      for (let i = 0; i < dots.length; i++) {
-        const [x0, y0, z0] = dots[i];
-        const x1 = x0 * cosA + z0 * sinA;
-        const z1 = -x0 * sinA + z0 * cosA;
-        const y2 = y0 * cosT - z1 * sinT;
-        const z2 = y0 * sinT + z1 * cosT;
-        if (z2 < -0.05) continue;
-        const depth = (z2 + 1) / 2;
-        ctx.beginPath();
-        ctx.arc(cx + x1 * R, cy - y2 * R, 0.4 + depth, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${(0.18 + depth * 0.55).toFixed(2)})`;
-        ctx.fill();
+    // ── Globe geometry ──────────────────────────────────────
+    const geo   = new THREE.IcosahedronGeometry(1, 22);
+    const globe = new THREE.Points(geo, material);
+    scene.add(globe);
+
+    // invisible sphere for raycasting
+    const meshMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+    const mesh    = new THREE.Mesh(geo, meshMat);
+    scene.add(mesh);
+
+    // ── Sphere behind dots (color adapts to theme) ────────────
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x050508, transparent: true, opacity: 0.88 });
+    const bgSphere = new THREE.Mesh(new THREE.SphereGeometry(0.98, 32, 32), bgMat);
+    scene.add(bgSphere);
+
+    // ── Atmospheric rim glow (Fresnel shader) ────────────────
+    // vNormal.z ≈ 1 at center, ≈ 0 at edges → rim = 1 - |vNormal.z|
+    const rimVert = /* glsl */`
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
+    `;
+
+    const isLight = () => document.documentElement.getAttribute("data-theme") === "light";
+
+    // Tight bright rim (tight Fresnel, high power)
+    const rimFrag1 = /* glsl */`
+      varying vec3 vNormal;
+      uniform float u_light;
+      void main() {
+        float rim = 1.0 - abs(vNormal.z);
+        float alpha = pow(rim, 3.5) * 0.88;
+        vec3  col   = mix(vec3(0.88, 0.93, 1.0), vec3(0.15, 0.15, 0.2), u_light);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+    // Mid soft glow
+    const rimFrag2 = /* glsl */`
+      varying vec3 vNormal;
+      uniform float u_light;
+      void main() {
+        float rim = 1.0 - abs(vNormal.z);
+        float alpha = pow(rim, 2.0) * 0.32;
+        vec3  col   = mix(vec3(0.55, 0.65, 1.0), vec3(0.2, 0.2, 0.25), u_light);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+    // Wide outer atmosphere
+    const rimFrag3 = /* glsl */`
+      varying vec3 vNormal;
+      uniform float u_light;
+      void main() {
+        float rim = 1.0 - abs(vNormal.z);
+        float alpha = pow(rim, 1.3) * 0.12;
+        vec3  col   = mix(vec3(0.4, 0.55, 1.0), vec3(0.25, 0.25, 0.3), u_light);
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+
+    const rimProps = {
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
     };
 
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
-      if (visible && raf === 0) raf = requestAnimationFrame(render);
-    }, { threshold: 0.01 });
-    io.observe(cv);
-    raf = requestAnimationFrame(render);
-    return () => { cancelAnimationFrame(raf); io.disconnect(); };
-  }, [dots, size]);
+    const uLight = { value: isLight() ? 1.0 : 0.0 };
 
-  const R  = size / 2 - 14;
-  const cx = size / 2, cy = size / 2;
-  const off = 120, VB = size + 240;
+    const rim1 = new THREE.Mesh(
+      new THREE.SphereGeometry(1.01, 48, 48),
+      new THREE.ShaderMaterial({ vertexShader: rimVert, fragmentShader: rimFrag1, uniforms: { u_light: uLight }, ...rimProps })
+    );
+    scene.add(rim1);
+
+    const rim2 = new THREE.Mesh(
+      new THREE.SphereGeometry(1.10, 48, 48),
+      new THREE.ShaderMaterial({ vertexShader: rimVert, fragmentShader: rimFrag2, uniforms: { u_light: uLight }, ...rimProps })
+    );
+    scene.add(rim2);
+
+    const rim3 = new THREE.Mesh(
+      new THREE.SphereGeometry(1.22, 48, 48),
+      new THREE.ShaderMaterial({ vertexShader: rimVert, fragmentShader: rimFrag3, uniforms: { u_light: uLight }, ...rimProps })
+    );
+    scene.add(rim3);
+
+    // ── Load texture ────────────────────────────────────────
+    new THREE.TextureLoader().load("/earth-map.png", (tex) => {
+      material.uniforms.u_map_tex.value = tex;
+      updateSize();
+    });
+
+    // ── Interaction ─────────────────────────────────────────
+    const raycaster = new THREE.Raycaster();
+    raycaster.far   = 1.15;
+    const mouse     = new THREE.Vector2(-2, -2);
+    let   rippleStart  = -99;   // time of last ripple trigger
+    let   wasHovering  = false; // prevents re-trigger on every frame
+
+    function updateMouse(clientX: number, clientY: number) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x =  ((clientX - rect.left) / rect.width)  * 2 - 1;
+      mouse.y = -((clientY - rect.top)  / rect.height) * 2 + 1;
+    }
+
+    function triggerRipple(normal: THREE.Vector3) {
+      material.uniforms.u_pointer.value = normal;
+      rippleStart = performance.now() / 1000;
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      updateMouse(e.clientX, e.clientY);
+    }
+
+    function onClick(e: MouseEvent) {
+      updateMouse(e.clientX, e.clientY);
+      const hits = raycaster.intersectObject(mesh);
+      if (hits.length) triggerRipple(hits[0].face!.normal.clone());
+    }
+
+    renderer.domElement.addEventListener("mousemove", onMouseMove, { passive: true });
+    renderer.domElement.addEventListener("click", onClick);
+
+    // ── Resize ──────────────────────────────────────────────
+    function updateSize() {
+      const s = container?.clientWidth || size * OVERFLOW;
+      renderer.setSize(s, s);
+      // Divide by OVERFLOW so dots appear the same visual size as in the
+      // original 1:1 canvas — the camera is wider but dots stay proportional.
+      material.uniforms.u_dot_size.value = (0.036 / OVERFLOW) * s;
+    }
+
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(container);
+    updateSize();
+
+    // ── Render loop ─────────────────────────────────────────
+    let rafId = 0;
+    function render() {
+      rafId = requestAnimationFrame(render);
+
+      // hover: trigger ripple once on enter (not every frame)
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObject(mesh);
+      if (hits.length) {
+        if (!wasHovering) {
+          // first frame over globe → trigger subtle hover ripple
+          triggerRipple(hits[0].face!.normal.clone());
+          wasHovering = true;
+        }
+        renderer.domElement.style.cursor = "grab";
+      } else {
+        wasHovering = false;
+        renderer.domElement.style.cursor = "default";
+      }
+      material.uniforms.u_time_since_hover.value =
+        performance.now() / 1000 - rippleStart;
+
+      // sync theme-aware colours each frame (cheap attr read)
+      const light = isLight();
+      material.uniforms.u_color.value = getAccent();
+      uLight.value = light ? 1.0 : 0.0;
+      bgMat.color.setHex(light ? 0xf0f0f4 : 0x050508);
+      bgMat.opacity = light ? 0.72 : 0.88;
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    render();
+
+    // ── Cleanup ─────────────────────────────────────────────
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+      renderer.domElement.removeEventListener("mousemove", onMouseMove);
+      renderer.domElement.removeEventListener("click", onClick);
+      controls.dispose();
+      geo.dispose();
+      material.dispose();
+      meshMat.dispose();
+      bgSphere.geometry.dispose(); bgMat.dispose();
+      rim1.geometry.dispose(); (rim1.material as THREE.Material).dispose();
+      rim2.geometry.dispose(); (rim2.material as THREE.Material).dispose();
+      rim3.geometry.dispose(); (rim3.material as THREE.Material).dispose();
+      renderer.dispose();
+      container?.removeChild(renderer.domElement);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The canvas render area is OVERFLOW× the logical size so glow
+  // has room. Negative half-offset re-centres it in the logical footprint.
+  const renderSize = Math.round(size * OVERFLOW);
+  const offset     = Math.round((renderSize - size) / 2);
 
   return (
     <div className="globe" style={{ width: size, height: size }}>
-      {/* Static SVG — sphere gradients & glow halos, no animated elements */}
-      <svg
-        viewBox={`${-off} ${-off} ${VB} ${VB}`}
-        width={VB} height={VB}
-        style={{ overflow: "visible", display: "block", position: "absolute", left: -off, top: -off, pointerEvents: "none" }}
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="rim" cx="50%" cy="50%" r="50%">
-            <stop offset="55%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0"/>
-            <stop offset="78%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.40"/>
-            <stop offset="90%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.92"/>
-            <stop offset="96%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0.75"/>
-            <stop offset="100%" stopColor="var(--globe-rim,#FFFFFF)" stopOpacity="0"/>
-          </radialGradient>
-          <radialGradient id="rimOuter" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
-            <stop offset="50%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
-            <stop offset="62%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.22"/>
-            <stop offset="72%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.62"/>
-            <stop offset="80%"  stopColor="var(--globe-halo,#B8D0FF)" stopOpacity="0.48"/>
-            <stop offset="90%"  stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0.20"/>
-            <stop offset="100%" stopColor="var(--globe-halo,#A8C8FF)" stopOpacity="0"/>
-          </radialGradient>
-          <radialGradient id="rimFar" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
-            <stop offset="35%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
-            <stop offset="55%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.18"/>
-            <stop offset="75%"  stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0.10"/>
-            <stop offset="100%" stopColor="var(--globe-halo,#7AA8FF)" stopOpacity="0"/>
-          </radialGradient>
-          <radialGradient id="globeShade" cx="38%" cy="36%" r="72%">
-            <stop offset="0%"   stopColor="var(--globe-hi,#1f1f28)"  stopOpacity="1"/>
-            <stop offset="55%"  stopColor="var(--globe-mid,#0c0c10)" stopOpacity="1"/>
-            <stop offset="100%" stopColor="var(--globe-lo,#000000)"  stopOpacity="1"/>
-          </radialGradient>
-          <filter id="rimGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="14"/>
-          </filter>
-        </defs>
-        <circle cx={cx} cy={cy} r={R + 140} fill="url(#rimFar)"/>
-        <circle cx={cx} cy={cy} r={R + 70}  fill="url(#rimOuter)"/>
-        <circle cx={cx} cy={cy} r={R + 4}   fill="url(#rim)" filter="url(#rimGlow)"/>
-        <circle cx={cx} cy={cy} r={R}        fill="url(#globeShade)"/>
-        <circle cx={cx} cy={cy} r={R}        fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="1.2" opacity="0.72"/>
-        <circle cx={cx} cy={cy} r={R + 1}    fill="none" stroke="var(--globe-rim,#FFFFFF)" strokeWidth="18"  opacity="0.28" filter="url(#rimGlow)"/>
-      </svg>
-      {/* Canvas — animated dot field; CSS size locked so DPR scaling doesn't distort */}
-      <canvas
-        ref={cvRef}
+      {/* Three.js canvas — OVERFLOW× larger, centred via negative offset.
+          CSS mask creates a radial soft fade so no hard canvas edge is visible. */}
+      <div
+        ref={mountRef}
         style={{
-          display: "block", position: "absolute", left: -off, top: -off,
-          width: VB, height: VB,   // CSS display size = SVG display size
-          pointerEvents: "none",
+          width:  renderSize,
+          height: renderSize,
+          position: "absolute",
+          left: -offset,
+          top:  -offset,
+          // Radial mask: opaque through the globe + full glow, then
+          // fades to transparent before the canvas edge — eliminates box feel.
+          maskImage:       "radial-gradient(circle closest-side at 50% 50%, black 72%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(circle closest-side at 50% 50%, black 72%, transparent 100%)",
         }}
-        aria-hidden="true"
       />
+      {/* CSS rim ring — ABOVE canvas (z-index 1), screen-blends for physical light */}
+      <div className="globe-glow" aria-hidden />
     </div>
   );
 }

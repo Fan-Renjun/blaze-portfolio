@@ -87,11 +87,72 @@ html[data-theme="light"] .portfolio {
 /* ─── Scroll behaviour + Snap ───────────────────────────── */
 html {
   scroll-behavior: smooth;
-  /* mandatory: viewport MUST rest at a snap point */
-  scroll-snap-type: y mandatory;
 }
 html, body { overscroll-behavior: none }
-.globe { will-change: transform; transform: translateZ(0) }
+.globe { will-change: transform; transform: translateZ(0); position: relative; overflow: visible }
+
+/* Atmospheric glow — single smooth radial gradient, no dark banding */
+.globe-atmo { display: none }   /* reserved, unused */
+.globe-atmo-far, .globe-atmo-near { display: none }
+
+/* Globe CSS glow layers — ABOVE canvas (z-index 1).
+   Uses mix-blend-mode: screen so colours ADD physically on dark bg;
+   transparent center lets canvas/dots show through.
+   Three pseudo layers: ::before = wide atmosphere, ::after = inner highlight */
+.globe-glow {
+  position: absolute;
+  inset: -5%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: screen;
+  /* Layer 1 — tight bright edge ring */
+  background: radial-gradient(circle,
+    transparent            79%,
+    rgba(180,210,255,.06)  81%,
+    rgba(235,245,255,.50)  83%,
+    rgba(255,255,255,.78)  84.2%,
+    rgba(210,228,255,.44)  85.5%,
+    rgba(155,195,255,.14)  88%,
+    rgba(90,140,255,.03)   92%,
+    transparent            97%
+  );
+}
+/* Layer 2 — mid soft halo */
+.globe-glow::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle,
+    transparent            68%,
+    rgba(120,170,255,.04)  72%,
+    rgba(180,210,255,.14)  77%,
+    rgba(200,225,255,.10)  80%,
+    rgba(140,180,255,.04)  86%,
+    transparent            93%
+  );
+}
+/* Layer 3 — wide deep-space bleed (2× globe size, very soft) */
+.globe-glow::after {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle,
+    transparent            55%,
+    rgba(80,120,220,.03)   60%,
+    rgba(100,145,240,.07)  68%,
+    rgba(80,120,220,.03)   76%,
+    transparent            88%
+  );
+}
+/* Light mode: Three.js rim shaders handle the glow; hide the CSS layers */
+[data-theme="light"] .globe-glow,
+[data-theme="light"] .globe-glow::before,
+[data-theme="light"] .globe-glow::after { opacity: 0 }
 .bg-canvas, .bg-particles, .bg-grid { will-change: transform }
 
 /* Custom CSS cursor is injected by TechCursor.tsx via encodeURIComponent + style tag.
@@ -125,9 +186,6 @@ html, body { overscroll-behavior: none }
   position: relative;
   content-visibility: auto;
   contain-intrinsic-size: 0 600px;
-  /* Snap every section to its own start */
-  scroll-snap-align: start;
-  scroll-snap-stop: always;   /* don't allow skipping sections mid-scroll */
   min-height: 100vh;           /* fill at least one viewport */
 }
 .section + .section { border-top: 1px solid var(--line) }
@@ -231,11 +289,11 @@ html, body { overscroll-behavior: none }
 /* Globe: pull inward so text overlaps its left side */
 .hero-globe-right {
   position: absolute;
-  right: 20px;   /* positive = inside container, moves globe left */
+  right: 20px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
-  pointer-events: none;
+  /* pointer-events enabled so globe accepts drag + click */
   display: flex;
   flex-direction: column;
   align-items: center;  /* pill centers under globe sphere */
@@ -381,7 +439,7 @@ html, body { overscroll-behavior: none }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px }
 
 
-.globe { position: relative; overflow: visible }
+/* (globe styles consolidated above) */
 
 /* ─── Tablet (≤959px) — keep side-by-side, scale down ──────── */
 @media (max-width: 959px) {
