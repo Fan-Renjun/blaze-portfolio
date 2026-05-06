@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import Captions from "yet-another-react-lightbox/plugins/captions";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
@@ -10,15 +10,22 @@ import type { Photo } from "@/lib/types";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
 
-// ── orientation → grid size cycle ─────────────────────────────
-const LANDSCAPE_CYCLE = ["s-2", "s-3", "s-4", "s-7", "s-3", "s-2", "s-4"];
-const PORTRAIT_CYCLE  = ["s-v2", "s-v1", "s-v3", "s-v1", "s-v2", "s-v3", "s-v1"];
-const DEFAULT_CYCLE   = ["s-1", "s-2", "s-3", "s-4", "s-5", "s-6", "s-7"];
+// Varied size cycles — staggered editorial layout
+const L_CYCLE = ["g-xl",  "g-m",  "g-l",  "g-wide", "g-m",  "g-xl",  "g-l" ];
+const P_CYCLE = ["g-pt",  "g-pm", "g-pt", "g-pm",   "g-pt", "g-pm",  "g-pt"];
+const D_CYCLE = ["g-s",   "g-m",  "g-sq", "g-s",    "g-m",  "g-s",   "g-sq"];
 
-function getSizeClass(orientation: Photo["orientation"], index: number): string {
-  if (orientation === "横屏") return LANDSCAPE_CYCLE[index % LANDSCAPE_CYCLE.length];
-  if (orientation === "竖屏") return PORTRAIT_CYCLE[index % PORTRAIT_CYCLE.length];
-  return DEFAULT_CYCLE[index % DEFAULT_CYCLE.length];
+function buildSizeMap(photos: { orientation: Photo["orientation"] }[]): string[] {
+  let li = 0, pi = 0, di = 0;
+  return photos.map(p => {
+    if (p.orientation === "横屏") return L_CYCLE[li++ % L_CYCLE.length];
+    if (p.orientation === "竖屏") return P_CYCLE[pi++ % P_CYCLE.length];
+    return D_CYCLE[di++ % D_CYCLE.length];
+  });
+}
+
+function getObjectPosition(orientation: Photo["orientation"]): string {
+  return orientation === "竖屏" ? "center top" : "center center";
 }
 
 const FILTERS = [
@@ -64,7 +71,9 @@ export function PhotosSection() {
     ? photos.filter(p => p.category === activeFilter)
     : photos;
 
-  const visible = showAll ? filtered : filtered.slice(0, 5);
+  const visible  = showAll ? filtered : filtered.slice(0, 5);
+  // Compute size classes once per visible set (resets counters per render)
+  const sizeMap  = useMemo(() => buildSizeMap(visible), [visible]);
 
   // Lightbox slides from filtered set
   const slides = filtered
@@ -91,39 +100,27 @@ export function PhotosSection() {
           />
         </Reveal>
 
-        {/* ── 筛选 + 展开 同行 ── */}
+        {/* ── 筛选栏（仅 pill） ── */}
         <Reveal delay={30}>
-          <div className="photo-filter-bar">
-            <div className="photo-filters">
-              {FILTERS.map(f => (
-                <button
-                  key={String(f.value)}
-                  className={`photo-filter-btn${activeFilter === f.value ? " active" : ""}`}
-                  onClick={() => handleFilter(f.value as FilterValue)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {filtered.length > 5 && (
-              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
-                <span>{showAll ? "收起画廊" : "完整画廊"}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
-                </svg>
+          <div className="photo-filters" style={{ marginBottom: 20 }}>
+            {FILTERS.map(f => (
+              <button
+                key={String(f.value)}
+                className={`photo-filter-btn${activeFilter === f.value ? " active" : ""}`}
+                onClick={() => handleFilter(f.value as FilterValue)}
+              >
+                {f.label}
               </button>
-            )}
+            ))}
           </div>
         </Reveal>
 
         <Reveal delay={60}>
           <div className="gallery">
-            {visible.map((p, i) => {
-              const sizeClass = getSizeClass(p.orientation, i);
-              return (
+            {visible.map((p, i) => (
                 <div
                   key={p.id}
-                  className={`photo ${sizeClass}`}
+                  className={`photo ${sizeMap[i] ?? "g-s"}`}
                   onClick={() => setLightboxIndex(toSlideIndex(i))}
                   style={{ cursor: "pointer" }}
                 >
@@ -133,18 +130,18 @@ export function PhotosSection() {
                       alt={p.location ?? p.category ?? "photo"}
                       loading="lazy"
                       decoding="async"
+                      style={{ objectPosition: getObjectPosition(p.orientation) }}
                     />
                   ) : (
                     <div style={{ width: "100%", height: "100%", background: "var(--card)" }} />
                   )}
-                  {p.category && <span className="photo-tag">{p.category}</span>}
+                  {p.location && <span className="photo-tag">{p.location}</span>}
                   <div className="photo-meta">
-                    <span>{p.category ?? ""}</span>
+                    {p.category && <span>{p.category}</span>}
                     {p.location && <span className="loc">{p.location}</span>}
                   </div>
                 </div>
-              );
-            })}
+            ))}
             {visible.length === 0 && (
               <p style={{ color: "var(--fg-3)", fontSize: 14, gridColumn: "1/-1", padding: "40px 0" }}>
                 该分类暂无照片。
@@ -152,6 +149,20 @@ export function PhotosSection() {
             )}
           </div>
         </Reveal>
+
+        {/* ── 完整画廊 button 在画廊下方 ── */}
+        {filtered.length > 5 && (
+          <Reveal delay={80}>
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
+                <span>{showAll ? "收起画廊" : "完整画廊"}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
+                </svg>
+              </button>
+            </div>
+          </Reveal>
+        )}
       </div>
 
       <Lightbox

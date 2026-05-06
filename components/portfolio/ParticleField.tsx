@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-// ─── colour palette (fixed, not theme-dependent) ─────────────
-const C = {
-  core:  [180, 220, 255] as const,   // particle bright core
-  glow:  [ 80, 160, 255] as const,   // particle halo / line glow
-  line:  [100, 170, 255] as const,   // connection line
-};
+// ─── colour palettes (theme-aware) ───────────────────────────
+const DARK_C  = { core: [180, 220, 255] as const, glow: [ 80, 160, 255] as const, line: [100, 170, 255] as const };
+const LIGHT_C = { core: [ 20,  80, 180] as const, glow: [  0,  90, 200] as const, line: [ 30, 100, 200] as const };
+
+function getColors() {
+  return document.documentElement.getAttribute("data-theme") === "light" ? LIGHT_C : DARK_C;
+}
 
 // ─── tuning knobs ─────────────────────────────────────────────
 const MAX_PARTICLES   = 90;
@@ -104,9 +105,11 @@ export function ParticleField() {
         py[i] = ((p.y - yOff) % h + h) % h;
       }
 
-      // connection lines — no shadowBlur (forces GPU rasterize every frame)
+      // Read theme-appropriate colours each frame (cheap string attr read)
+      const C = getColors();
+
+      // connection lines
       const DIST2 = CONNECT_DIST * CONNECT_DIST;
-      // Batch all lines in one path per alpha bucket to reduce state changes
       ctx.lineWidth = 0.8;
       for (let i = 0; i < parts.length; i++) {
         for (let j = i + 1; j < parts.length; j++) {
@@ -124,7 +127,7 @@ export function ParticleField() {
         }
       }
 
-      // particles — skip halo gradient for dim particles (bright ones keep it)
+      // particles
       for (let i = 0; i < parts.length; i++) {
         const p = parts[i];
         const breath   = Math.sin(p.phase + time * p.bFreq);
@@ -132,7 +135,6 @@ export function ParticleField() {
         const bRadius  = p.r * (1 + breath * 0.22);
 
         if (p.bright) {
-          // Full halo only for bright "hub" particles (22% of total)
           const haloR = bRadius * 10;
           const g = ctx.createRadialGradient(px[i], py[i], 0, px[i], py[i], haloR);
           g.addColorStop(0, `rgba(${C.glow[0]},${C.glow[1]},${C.glow[2]},${(0.65 * bOpacity).toFixed(2)})`);
