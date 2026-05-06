@@ -84,9 +84,12 @@ html[data-theme="light"] .portfolio {
 [data-theme="light"] .ar-arrow:hover,
 [data-theme="light"] .article-row:hover .ar-arrow { color: #000 }
 
-/* ─── Scroll behaviour ───────────────────────────────────── */
-html { scroll-behavior: smooth }
-/* Stop overscroll rubber-band from making fixed backgrounds appear to move */
+/* ─── Scroll behaviour + Snap ───────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  /* mandatory: viewport MUST rest at a snap point */
+  scroll-snap-type: y mandatory;
+}
 html, body { overscroll-behavior: none }
 .globe { will-change: transform; transform: translateZ(0) }
 .bg-canvas, .bg-particles, .bg-grid { will-change: transform }
@@ -117,8 +120,34 @@ html, body { overscroll-behavior: none }
 /* ─── Layout ─────────────────────────────────────────────── */
 .shell { position: relative; z-index: 1 }
 .container { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter) }
-.section { padding: var(--section-y) 0; position: relative; content-visibility: auto; contain-intrinsic-size: 0 600px }
+.section {
+  padding: var(--section-y) 0;
+  position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+  /* Snap every section to its own start */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;   /* don't allow skipping sections mid-scroll */
+  min-height: 100vh;           /* fill at least one viewport */
+}
 .section + .section { border-top: 1px solid var(--line) }
+
+/* Hero: already enforces 100vh via hero-split */
+.section.hero { min-height: 100vh }
+
+/* Long sections: content exceeds 100vh — keep snap anchor at top,
+   but drop scroll-snap-stop so users can scroll freely through them.
+   Mandatory still lands them at the section top on entry. */
+.section#photo,
+.section#travel {
+  scroll-snap-stop: normal;   /* allow continuous scroll through long content */
+  min-height: auto;           /* natural height, not forced to 100vh */
+}
+
+/* Projects grid can be slightly taller than 100vh — let it breathe */
+.section#projects {
+  scroll-snap-stop: normal;
+}
 
 /* ─── Nav ────────────────────────────────────────────────── */
 .nav {

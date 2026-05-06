@@ -9,9 +9,10 @@ import { SectionHead } from "./SectionHead";
 import { Modal } from "./Modal";
 
 export function ArticlesSection() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [showAll, setShowAll]   = useState(false);
-  const [openArticle, setOpenArticle] = useState<Article | null>(null);
+  const [articles, setArticles]         = useState<Article[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [showAll, setShowAll]           = useState(false);
+  const [openArticle, setOpenArticle]   = useState<Article | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -22,7 +23,21 @@ export function ArticlesSection() {
       .then(({ data }) => setArticles((data as Article[]) ?? []));
   }, []);
 
-  const visible = showAll ? articles : articles.slice(0, 3);
+  // Collect unique categories from actual data
+  const categories = Array.from(
+    new Set(articles.map(a => a.category).filter(Boolean) as string[])
+  );
+
+  const handleFilter = (v: string | null) => {
+    setActiveFilter(v);
+    setShowAll(false);
+  };
+
+  const filtered = activeFilter
+    ? articles.filter(a => a.category === activeFilter)
+    : articles;
+
+  const visible = showAll ? filtered : filtered.slice(0, 3);
 
   return (
     <section className="section" id="articles">
@@ -32,18 +47,41 @@ export function ArticlesSection() {
             eyebrow="WRITING / 文章"
             title="想法的延长线"
             sub="不定期更新关于 AI、产品、开发、设计的随笔。"
-            action={
-              articles.length > 3 ? (
+          />
+        </Reveal>
+
+        {/* ── 筛选 + 展开 同行 ── */}
+        {categories.length > 0 && (
+          <Reveal delay={20}>
+            <div className="photo-filter-bar">
+              <div className="photo-filters">
+                <button
+                  className={`photo-filter-btn${activeFilter === null ? " active" : ""}`}
+                  onClick={() => handleFilter(null)}
+                >
+                  全部
+                </button>
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    className={`photo-filter-btn${activeFilter === cat ? " active" : ""}`}
+                    onClick={() => handleFilter(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              {filtered.length > 3 && (
                 <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
                   <span>{showAll ? "收起" : "全部文章"}</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
                     <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
                   </svg>
                 </button>
-              ) : null
-            }
-          />
-        </Reveal>
+              )}
+            </div>
+          </Reveal>
+        )}
 
         <div className="grid-articles">
           {visible.map((a, i) => (
@@ -54,9 +92,9 @@ export function ArticlesSection() {
                   <div className="ar-title">{a.title}</div>
                   <div className="ar-sub">
                     {a.summary}
-                    {(a.category || a.publish_date) && (
+                    {a.category && (
                       <span style={{ color: "var(--fg-4)", marginLeft: 6 }}>
-                        {a.category ? `· ${a.category}` : ""}
+                        · {a.category}
                       </span>
                     )}
                   </div>
@@ -69,6 +107,11 @@ export function ArticlesSection() {
               </div>
             </Reveal>
           ))}
+          {visible.length === 0 && (
+            <p style={{ color: "var(--fg-3)", fontSize: 14, padding: "24px 0" }}>
+              该分类暂无文章。
+            </p>
+          )}
         </div>
       </div>
 
