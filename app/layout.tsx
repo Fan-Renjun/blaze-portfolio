@@ -14,8 +14,12 @@ export const metadata: Metadata = {
   title: "范任君 · Blaze Fan",
   description: "AI 产品经理，视觉中国签约摄影师，专注于让 AI 在真实场景中创造价值。",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico",  sizes: "any" },
+    ],
     shortcut: "/favicon.svg",
+    apple:    "/apple-touch-icon.png",
   },
 };
 

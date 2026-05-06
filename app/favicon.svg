@@ -1,4 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#007AFF"/>
-  <text x="16" y="23" font-family="system-ui,-apple-system,sans-serif" font-size="18" font-weight="700" text-anchor="middle" fill="white">F</text>
+  <!-- Dark rounded background -->
+  <rect width="32" height="32" rx="7" fill="#0A0A0B"/>
+  <!-- Three orbital ellipses at 0°, 60°, 120° -->
+  <g fill="none" stroke="#007AFF" stroke-width="1.7" transform="translate(16 16)">
+    <ellipse rx="12.5" ry="5"/>
+    <ellipse rx="12.5" ry="5" transform="rotate(60)"/>
+    <ellipse rx="12.5" ry="5" transform="rotate(120)"/>
+  </g>
+  <!-- Electron dot (upper-right of first orbital) -->
+  <circle cx="21" cy="11" r="2.2" fill="#007AFF"/>
 </svg>
