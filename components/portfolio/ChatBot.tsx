@@ -48,14 +48,16 @@ export function ChatBot() {
       const targetY = cy + ndy * (rect.height / 2);
 
       // Spline runtime 监听 pointermove，用 PointerEvent 才能被接收
+      // bubbles:false — 事件只停在 canvas，不往上传播，
+      // 避免 Globe 的 OrbitControls 误收到合成事件
       canvas.dispatchEvent(new PointerEvent("pointermove", {
         clientX:     targetX,
         clientY:     targetY,
         pointerId:   1,
         pointerType: "mouse",
         isPrimary:   true,
-        bubbles:     true,
-        cancelable:  true,
+        bubbles:     false,
+        cancelable:  false,
       }));
     };
 
