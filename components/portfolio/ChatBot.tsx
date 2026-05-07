@@ -44,7 +44,7 @@ export function ChatBot() {
       const ndy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
 
       // 映射到 canvas：X 取反修正 Spline 场景的反向追踪
-      const targetX = cx - ndx * (rect.width  / 2);
+      const targetX = cx + ndx * (rect.width  / 2);
       const targetY = cy + ndy * (rect.height / 2);
 
       // Spline runtime 监听 pointermove，用 PointerEvent 才能被接收
