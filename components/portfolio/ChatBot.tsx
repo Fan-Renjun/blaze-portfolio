@@ -11,7 +11,7 @@ const Spline = dynamic(() => import("@splinetool/react-spline"), {
 });
 
 const SCENE = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
-const SIZE  = 100; // sphere diameter (px)
+const SIZE  = 85; // sphere diameter (px)
 
 export function ChatBot() {
   const [shown, setShown] = useState(true);
