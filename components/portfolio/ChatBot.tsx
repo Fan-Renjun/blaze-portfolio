@@ -28,33 +28,35 @@ export function ChatBot() {
   }, []);
 
   // ── Global cursor tracking → Spline canvas ────────────────
-  // Spline 只处理 canvas 自身的 mousemove 事件。
-  // 做法：监听全局 mousemove，把鼠标在页面上的归一化位置
-  // 映射到 canvas 坐标，再派发 synthetic event 给 canvas。
-  // X 轴取镜像（1 - nx）修正场景内方向与实际 cursor 相反的问题。
+  // Spline runtime 监听 canvas 上的 PointerEvent（不是 MouseEvent）。
+  // 以画布中心为基准做坐标映射，X 轴取反修正场景内方向问题。
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       const canvas = containerRef.current?.querySelector("canvas");
       if (!canvas) return;
 
       const rect = canvas.getBoundingClientRect();
+      const cx = rect.left  + rect.width  / 2;  // canvas 中心 X
+      const cy = rect.top   + rect.height / 2;  // canvas 中心 Y
 
-      // 全局归一化坐标 [0, 1]
-      const nx = e.clientX / window.innerWidth;
-      const ny = e.clientY / window.innerHeight;
+      // 光标相对视口中心的归一化偏移 (-1 ~ 1)
+      const ndx = (e.clientX - window.innerWidth  / 2) / (window.innerWidth  / 2);
+      const ndy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
 
-      // 映射到 canvas 坐标，X 取镜像修正方向
-      const cx = rect.left + (1 - nx) * rect.width;
-      const cy = rect.top  +       ny  * rect.height;
+      // 映射到 canvas：X 取反修正 Spline 场景的反向追踪
+      const targetX = cx - ndx * (rect.width  / 2);
+      const targetY = cy + ndy * (rect.height / 2);
 
-      canvas.dispatchEvent(
-        new MouseEvent("mousemove", {
-          clientX:  cx,
-          clientY:  cy,
-          bubbles:  true,
-          cancelable: true,
-        })
-      );
+      // Spline runtime 监听 pointermove，用 PointerEvent 才能被接收
+      canvas.dispatchEvent(new PointerEvent("pointermove", {
+        clientX:     targetX,
+        clientY:     targetY,
+        pointerId:   1,
+        pointerType: "mouse",
+        isPrimary:   true,
+        bubbles:     true,
+        cancelable:  true,
+      }));
     };
 
     window.addEventListener("mousemove", onMouseMove, { passive: true });
