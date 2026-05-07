@@ -3,20 +3,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import type { Application } from "@splinetool/runtime";
+import type { SplineProps } from "@splinetool/react-spline";
 
-const Spline = dynamic(() => import("@splinetool/react-spline"), {
-  ssr: false,
-  loading: () => null,
-});
+// 显式传 SplineProps 类型，onLoad 才能正确传递
+const Spline = dynamic<SplineProps>(
+  () => import("@splinetool/react-spline"),
+  { ssr: false, loading: () => null }
+);
 
 const SCENE        = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE         = 80;
 const TRACK_RADIUS = 150;
 
 export function ChatBot() {
-  const [shown, setShown]     = useState(true);
-  const containerRef          = useRef<HTMLDivElement>(null);
-  const splineRef             = useRef<Application | null>(null);
+  const [shown, setShown] = useState(true);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const splineRef         = useRef<Application | null>(null);
 
   // ── Scroll visibility ─────────────────────────────────────
   useEffect(() => {
@@ -30,14 +32,17 @@ export function ChatBot() {
     return () => { window.removeEventListener("scroll", onScroll); clearTimeout(timer); };
   }, []);
 
-  // ── Spline onLoad: store Application instance + log objects ──
+  // ── Spline onLoad ─────────────────────────────────────────
   const handleLoad = useCallback((spline: Application) => {
     splineRef.current = spline;
+    // 验证用：打印对象名，确认 eyes 已找到
     const names = spline.getAllObjects().map(o => o.name);
-    console.log("[HIM] scene objects:", names);
+    console.log("[HIM] objects:", names);
+    console.log("[HIM] eyes found:", !!spline.findObjectByName("eyes"));
   }, []);
 
-  // ── Cursor tracking via Spline Application API ────────────
+  // ── Cursor tracking via Application API ──────────────────
+  // 直接操作 Spline 场景内 eyes 组的旋转，放弃 setVariable 方案
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       const container = containerRef.current;
@@ -51,29 +56,15 @@ export function ChatBot() {
       const dy   = e.clientY - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // 归一化偏移 [-1, 1]，超出范围则归零（回正）
+      // 归一化偏移 [-1,1]，超出范围归零让眼睛回正
       const nx = dist <= TRACK_RADIUS ? dx / TRACK_RADIUS : 0;
       const ny = dist <= TRACK_RADIUS ? dy / TRACK_RADIUS : 0;
 
-      // 方案 A：尝试设置 scene 变量（如果场景暴露了变量）
-      try { app.setVariable("mouseX", nx); } catch { /* no-op */ }
-      try { app.setVariable("mouseY", ny); } catch { /* no-op */ }
-      try { app.setVariable("CursorX", nx); } catch { /* no-op */ }
-      try { app.setVariable("CursorY", ny); } catch { /* no-op */ }
-
-      // 方案 B：直接旋转对象（兜底）
-      // 尝试常见命名；找到就旋转
-      const obj =
-        app.findObjectByName("Sphere")      ??
-        app.findObjectByName("Ball")        ??
-        app.findObjectByName("HIM")         ??
-        app.findObjectByName("Character")   ??
-        app.findObjectByName("Body")        ??
-        app.getAllObjects().find(o => o.name !== "Camera" && o.name !== "Light" && o.name !== "Directional Light");
-
-      if (obj) {
-        obj.rotation.y = nx * 0.5;   // 左右
-        obj.rotation.x = -ny * 0.3;  // 上下（取反更自然）
+      const eyes = app.findObjectByName("eyes");
+      if (eyes) {
+        // -nx 修正方向：cursor 左移 → 眼睛左看（旋转为负）
+        eyes.rotation.y = -nx * 0.4;
+        eyes.rotation.x =  ny * 0.25;
       }
     };
 
@@ -99,11 +90,7 @@ export function ChatBot() {
         cursor: "pointer",
       }}
     >
-      <Spline
-        scene={SCENE}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onLoad={handleLoad as any}
-      />
+      <Spline scene={SCENE} onLoad={handleLoad} />
     </motion.div>
   );
 }
