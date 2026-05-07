@@ -15,7 +15,7 @@ const Spline = dynamic<SplineProps>(
 );
 
 const SCENE  = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
-const SIZE   = 80;
+const SIZE   = 85;
 const PANELW = 480;
 const BOTTOM = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
 
