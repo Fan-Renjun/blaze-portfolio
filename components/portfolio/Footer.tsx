@@ -8,6 +8,7 @@ export function Footer() {
         {PROFILE.status} · 2026
       </div>
       <div className="r">© BLAZE FAN · MADE WITH CARE</div>
+      <div className="footer-claude">Vibe-coded with <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer">Claude Code</a></div>
     </footer>
   );
 }

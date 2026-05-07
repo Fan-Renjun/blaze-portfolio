@@ -1406,6 +1406,9 @@ html, body { overscroll-behavior: none }
 .footer .l { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--fg-3) }
 .footer .l .dot { width: 6px; height: 6px; background: #5BD68C; border-radius: 99px; box-shadow: 0 0 8px #5BD68C }
 .footer .r { font: 500 11px/1 var(--font-mono); letter-spacing: .12em; color: var(--fg-3); text-transform: uppercase }
+.footer-claude { width: 100%; text-align: center; font-size: 12px; color: var(--fg-4); padding-top: 8px }
+.footer-claude a { color: var(--fg-3); text-decoration: none; transition: color .2s }
+.footer-claude a:hover { color: var(--fg) }
 
 /* ─── Reveal on scroll ───────────────────────────────────── */
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1) }
