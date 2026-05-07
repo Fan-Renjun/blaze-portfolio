@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import type { Application } from "@splinetool/runtime";
 
 const Spline = dynamic(() => import("@splinetool/react-spline"), {
   ssr: false,
@@ -10,11 +11,12 @@ const Spline = dynamic(() => import("@splinetool/react-spline"), {
 
 const SCENE        = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE         = 80;
-const TRACK_RADIUS = 150; // px — 以球心为圆心的追踪范围
+const TRACK_RADIUS = 150;
 
 export function ChatBot() {
-  const [shown, setShown] = useState(true);
-  const containerRef      = useRef<HTMLDivElement>(null);
+  const [shown, setShown]     = useState(true);
+  const containerRef          = useRef<HTMLDivElement>(null);
+  const splineRef             = useRef<Application | null>(null);
 
   // ── Scroll visibility ─────────────────────────────────────
   useEffect(() => {
@@ -28,40 +30,50 @@ export function ChatBot() {
     return () => { window.removeEventListener("scroll", onScroll); clearTimeout(timer); };
   }, []);
 
-  // ── Cursor tracking (150px radius around sphere center) ───
+  // ── Spline onLoad: store Application instance + log objects ──
+  const handleLoad = useCallback((spline: Application) => {
+    splineRef.current = spline;
+    const names = spline.getAllObjects().map(o => o.name);
+    console.log("[HIM] scene objects:", names);
+  }, []);
+
+  // ── Cursor tracking via Spline Application API ────────────
   useEffect(() => {
-    const send = (canvas: Element, clientX: number, clientY: number) => {
-      canvas.dispatchEvent(new PointerEvent("pointermove", {
-        clientX,
-        clientY,
-        pointerId:   1,
-        pointerType: "mouse",
-        isPrimary:   true,
-        bubbles:     false,  // 不冒泡，避免干扰 Globe OrbitControls
-        cancelable:  false,
-      }));
-    };
-
     const onMouseMove = (e: MouseEvent) => {
-      const canvas = containerRef.current?.querySelector("canvas");
-      if (!canvas) return;
+      const container = containerRef.current;
+      const app       = splineRef.current;
+      if (!container || !app) return;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = container.getBoundingClientRect();
       const cx   = rect.left + rect.width  / 2;
       const cy   = rect.top  + rect.height / 2;
-
       const dx   = e.clientX - cx;
       const dy   = e.clientY - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist <= TRACK_RADIUS) {
-        // 范围内：把偏移归一化到 [-1,1]，映射到 canvas 半宽/高
-        const nx = dx / TRACK_RADIUS;
-        const ny = dy / TRACK_RADIUS;
-        send(canvas, cx + nx * (rect.width / 2), cy + ny * (rect.height / 2));
-      } else {
-        // 超出范围：发送 canvas 中心，表情回正
-        send(canvas, cx, cy);
+      // 归一化偏移 [-1, 1]，超出范围则归零（回正）
+      const nx = dist <= TRACK_RADIUS ? dx / TRACK_RADIUS : 0;
+      const ny = dist <= TRACK_RADIUS ? dy / TRACK_RADIUS : 0;
+
+      // 方案 A：尝试设置 scene 变量（如果场景暴露了变量）
+      try { app.setVariable("mouseX", nx); } catch { /* no-op */ }
+      try { app.setVariable("mouseY", ny); } catch { /* no-op */ }
+      try { app.setVariable("CursorX", nx); } catch { /* no-op */ }
+      try { app.setVariable("CursorY", ny); } catch { /* no-op */ }
+
+      // 方案 B：直接旋转对象（兜底）
+      // 尝试常见命名；找到就旋转
+      const obj =
+        app.findObjectByName("Sphere")      ??
+        app.findObjectByName("Ball")        ??
+        app.findObjectByName("HIM")         ??
+        app.findObjectByName("Character")   ??
+        app.findObjectByName("Body")        ??
+        app.getAllObjects().find(o => o.name !== "Camera" && o.name !== "Light" && o.name !== "Directional Light");
+
+      if (obj) {
+        obj.rotation.y = nx * 0.5;   // 左右
+        obj.rotation.x = -ny * 0.3;  // 上下（取反更自然）
       }
     };
 
@@ -87,7 +99,11 @@ export function ChatBot() {
         cursor: "pointer",
       }}
     >
-      <Spline scene={SCENE} />
+      <Spline
+        scene={SCENE}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onLoad={handleLoad as any}
+      />
     </motion.div>
   );
 }
