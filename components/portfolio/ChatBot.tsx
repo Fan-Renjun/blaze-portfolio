@@ -8,12 +8,13 @@ const Spline = dynamic(() => import("@splinetool/react-spline"), {
   loading: () => null,
 });
 
-const SCENE = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
-const SIZE  = 80;
+const SCENE        = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
+const SIZE         = 80;
+const TRACK_RADIUS = 150; // px — 以球心为圆心的追踪范围
 
 export function ChatBot() {
-  const [shown, setShown]   = useState(true);
-  const containerRef        = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(true);
+  const containerRef      = useRef<HTMLDivElement>(null);
 
   // ── Scroll visibility ─────────────────────────────────────
   useEffect(() => {
@@ -27,38 +28,41 @@ export function ChatBot() {
     return () => { window.removeEventListener("scroll", onScroll); clearTimeout(timer); };
   }, []);
 
-  // ── Global cursor tracking → Spline canvas ────────────────
-  // Spline runtime 监听 canvas 上的 PointerEvent（不是 MouseEvent）。
-  // 以画布中心为基准做坐标映射，X 轴取反修正场景内方向问题。
+  // ── Cursor tracking (150px radius around sphere center) ───
   useEffect(() => {
+    const send = (canvas: Element, clientX: number, clientY: number) => {
+      canvas.dispatchEvent(new PointerEvent("pointermove", {
+        clientX,
+        clientY,
+        pointerId:   1,
+        pointerType: "mouse",
+        isPrimary:   true,
+        bubbles:     false,  // 不冒泡，避免干扰 Globe OrbitControls
+        cancelable:  false,
+      }));
+    };
+
     const onMouseMove = (e: MouseEvent) => {
       const canvas = containerRef.current?.querySelector("canvas");
       if (!canvas) return;
 
       const rect = canvas.getBoundingClientRect();
-      const cx = rect.left  + rect.width  / 2;  // canvas 中心 X
-      const cy = rect.top   + rect.height / 2;  // canvas 中心 Y
+      const cx   = rect.left + rect.width  / 2;
+      const cy   = rect.top  + rect.height / 2;
 
-      // 光标相对视口中心的归一化偏移 (-1 ~ 1)
-      const ndx = (e.clientX - window.innerWidth  / 2) / (window.innerWidth  / 2);
-      const ndy = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+      const dx   = e.clientX - cx;
+      const dy   = e.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // 映射到 canvas：X 取反修正 Spline 场景的反向追踪
-      const targetX = cx + ndx * (rect.width  / 2);
-      const targetY = cy + ndy * (rect.height / 2);
-
-      // Spline runtime 监听 pointermove，用 PointerEvent 才能被接收
-      // bubbles:false — 事件只停在 canvas，不往上传播，
-      // 避免 Globe 的 OrbitControls 误收到合成事件
-      canvas.dispatchEvent(new PointerEvent("pointermove", {
-        clientX:     targetX,
-        clientY:     targetY,
-        pointerId:   1,
-        pointerType: "mouse",
-        isPrimary:   true,
-        bubbles:     false,
-        cancelable:  false,
-      }));
+      if (dist <= TRACK_RADIUS) {
+        // 范围内：把偏移归一化到 [-1,1]，映射到 canvas 半宽/高
+        const nx = dx / TRACK_RADIUS;
+        const ny = dy / TRACK_RADIUS;
+        send(canvas, cx + nx * (rect.width / 2), cy + ny * (rect.height / 2));
+      } else {
+        // 超出范围：发送 canvas 中心，表情回正
+        send(canvas, cx, cy);
+      }
     };
 
     window.addEventListener("mousemove", onMouseMove, { passive: true });
