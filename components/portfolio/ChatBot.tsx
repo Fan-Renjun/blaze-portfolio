@@ -11,7 +11,7 @@ const Spline = dynamic(() => import("@splinetool/react-spline"), {
 });
 
 const SCENE = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
-const SIZE  = 85; // sphere diameter (px)
+const SIZE  = 80; // sphere diameter (px)
 
 export function ChatBot() {
   const [shown, setShown] = useState(true);
@@ -38,17 +38,15 @@ export function ChatBot() {
       transition={{ duration: 0.35, ease: "easeOut" }}
       style={{
         position: "fixed",
-        bottom: 28,
+        // env(safe-area-inset-bottom) 适配 iPhone 底部手势条
+        bottom: "max(28px, calc(env(safe-area-inset-bottom) + 12px))",
         left: "50%",
         translateX: "-50%",
         zIndex: 200,
         width: SIZE,
         height: SIZE,
-        // 圆形裁剪，overflow:hidden 限制 Spline canvas 在容器内
         borderRadius: "50%",
         overflow: "hidden",
-        // 不加任何 pointer-events 限制，让 Spline runtime
-        // 原生收到 mousemove 事件，确保表情追踪 cursor 正常工作
         cursor: "pointer",
       }}
     >
