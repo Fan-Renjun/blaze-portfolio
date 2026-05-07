@@ -34,11 +34,10 @@ export function ChatBot() {
 
   // ── Spline onLoad ─────────────────────────────────────────
   const handleLoad = useCallback((spline: Application) => {
+    // React StrictMode 会触发两次 onLoad，第二次 objects 为空
+    // 只保留第一次有效的 Application 实例
+    if (spline.getAllObjects().length === 0) return;
     splineRef.current = spline;
-    // 验证用：打印对象名，确认 eyes 已找到
-    const names = spline.getAllObjects().map(o => o.name);
-    console.log("[HIM] objects:", names);
-    console.log("[HIM] eyes found:", !!spline.findObjectByName("eyes"));
   }, []);
 
   // ── Cursor tracking via Application API ──────────────────
