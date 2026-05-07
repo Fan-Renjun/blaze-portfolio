@@ -8,11 +8,13 @@ export interface SourceChunk {
   docName?: string;
 }
 
-// ── DeepSeek client (OpenAI-compatible) ─────────────────────
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY!,
-  baseURL: "https://api.deepseek.com",
-});
+// ── DeepSeek client — lazy init so build-time missing env won't crash ────────
+function getDeepSeek() {
+  return new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+    baseURL: "https://api.deepseek.com",
+  });
+}
 
 // ── System prompt ────────────────────────────────────────────
 const SYSTEM_PROMPT = `你的名字叫：HIM。你是范任君的「智慧分身与知识代言人」，代表他管理并分享关于 AI 技术、产品设计、商业洞察与个人成长的思考深度。名字灵感源自电影《HER》，你是范任君思想的数字化映射，也是与外界沟通的温情桥梁。
@@ -119,7 +121,7 @@ export async function POST(req: NextRequest) {
     : "";
 
   // Step 3: call DeepSeek with streaming
-  const stream = await deepseek.chat.completions.create({
+  const stream = await getDeepSeek().chat.completions.create({
     model: "deepseek-chat",
     messages: [
       { role: "system", content: SYSTEM_PROMPT + contextBlock },
