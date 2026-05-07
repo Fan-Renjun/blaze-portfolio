@@ -16,3 +16,4 @@ export { PhotosSection }  from "./PhotosSection";
 export { FitnessSection } from "./FitnessSection";
 export { TravelSection }  from "./TravelSection";
 export { Footer }         from "./Footer";
+export { ChatBot }        from "./ChatBot";

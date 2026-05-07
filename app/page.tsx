@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Navbar, ThemeFab, CursorFab, TechCursor, ParticleField, HeroSection, WorkSection, ProjectsSection, ArticlesSection, PhotosSection, FitnessSection, TravelSection, Footer } from "@/components/portfolio";
+import { Navbar, ThemeFab, CursorFab, TechCursor, ParticleField, HeroSection, WorkSection, ProjectsSection, ArticlesSection, PhotosSection, FitnessSection, TravelSection, Footer, ChatBot } from "@/components/portfolio";
 import { SplashCursor } from "@/components/portfolio/SplashCursor";
 
 export default function Home() {
@@ -25,6 +25,7 @@ export default function Home() {
       <Navbar />
       <ThemeFab theme={theme} onToggle={toggleTheme} />
       <CursorFab active={cursorFx} onToggle={() => setCursorFx(v => !v)} />
+      <ChatBot />
 
       <main className="shell">
         <HeroSection />
