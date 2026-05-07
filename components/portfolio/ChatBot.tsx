@@ -5,20 +5,34 @@ import { motion } from "framer-motion";
 import type { Application } from "@splinetool/runtime";
 import type { SplineProps } from "@splinetool/react-spline";
 
-// 显式传 SplineProps 类型，onLoad 才能正确传递
 const Spline = dynamic<SplineProps>(
   () => import("@splinetool/react-spline"),
   { ssr: false, loading: () => null }
 );
 
-const SCENE        = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
-const SIZE         = 80;
-const TRACK_RADIUS = 150;
+const SCENE = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
+const SIZE  = 80;
+
+// ── Look states: rotation targets (radians) ────────────────
+// forward 出现 4 次权重，让眼睛大部分时间看正前方
+const LOOK_STATES = [
+  { y:  0.00, x:  0.00 },  // forward ×4
+  { y:  0.00, x:  0.00 },
+  { y:  0.00, x:  0.00 },
+  { y:  0.00, x:  0.00 },
+  { y:  0.40, x:  0.00 },  // left
+  { y: -0.40, x:  0.00 },  // right
+  { y:  0.00, x: -0.22 },  // up
+  { y:  0.00, x:  0.18 },  // down
+  { y:  0.28, x: -0.14 },  // upper-left
+  { y: -0.28, x: -0.14 },  // upper-right
+];
 
 export function ChatBot() {
   const [shown, setShown] = useState(true);
-  const containerRef      = useRef<HTMLDivElement>(null);
   const splineRef         = useRef<Application | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eyesRef           = useRef<any>(null);
 
   // ── Scroll visibility ─────────────────────────────────────
   useEffect(() => {
@@ -34,59 +48,96 @@ export function ChatBot() {
 
   // ── Spline onLoad ─────────────────────────────────────────
   const handleLoad = useCallback((spline: Application) => {
-    // React StrictMode 会触发两次 onLoad，第二次 objects 为空
-    // 只保留第一次有效的 Application 实例
-    if (spline.getAllObjects().length === 0) return;
+    if (spline.getAllObjects().length === 0) return; // StrictMode 空场景
     splineRef.current = spline;
+    eyesRef.current   = spline.findObjectByName("eyes") ?? null;
   }, []);
 
-  // ── Cursor tracking via Application API ──────────────────
-  // 直接操作 Spline 场景内 eyes 组的旋转，放弃 setVariable 方案
+  // ── Random eye animation loop ─────────────────────────────
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      const container = containerRef.current;
-      const app       = splineRef.current;
-      if (!container || !app) return;
+    let rafId: number;
 
-      const rect = container.getBoundingClientRect();
-      const cx   = rect.left + rect.width  / 2;
-      const cy   = rect.top  + rect.height / 2;
-      const dx   = e.clientX - cx;
-      const dy   = e.clientY - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+    // Current & target rotation
+    let curY = 0, curX = 0;
+    let tgtY = 0, tgtX = 0;
 
-      // 归一化偏移 [-1,1]，超出范围归零让眼睛回正
-      const nx = dist <= TRACK_RADIUS ? dx / TRACK_RADIUS : 0;
-      const ny = dist <= TRACK_RADIUS ? dy / TRACK_RADIUS : 0;
+    // State timer
+    let stateRemaining = 2000;
 
-      const eyes = app.findObjectByName("eyes");
-      if (eyes) {
-        // -nx 修正方向：cursor 左移 → 眼睛左看（旋转为负）
-        eyes.rotation.y = -nx * 0.4;
-        eyes.rotation.x =  ny * 0.25;
+    // Blink state
+    type BlinkPhase = "idle" | "closing" | "opening";
+    let blinkPhase: BlinkPhase = "idle";
+    let blinkCountdown = 2500 + Math.random() * 3000;
+    let blinkScaleY    = 1;
+
+    const nextLook = () => {
+      const s = LOOK_STATES[Math.floor(Math.random() * LOOK_STATES.length)];
+      tgtY = s.y;
+      tgtX = s.x;
+      stateRemaining = 1800 + Math.random() * 2800;
+    };
+    nextLook();
+
+    let lastTs = performance.now();
+
+    const tick = (ts: number) => {
+      rafId  = requestAnimationFrame(tick);
+      const dt = ts - lastTs;
+      lastTs   = ts;
+
+      // Resolve eyes ref lazily (in case onLoad fires after first tick)
+      if (!eyesRef.current && splineRef.current) {
+        eyesRef.current = splineRef.current.findObjectByName("eyes") ?? null;
       }
+      const eyes = eyesRef.current;
+      if (!eyes) return;
+
+      // ── Look state machine ──────────────────────────────
+      stateRemaining -= dt;
+      if (stateRemaining <= 0) nextLook();
+
+      // Smooth lerp toward target (eyes glide naturally)
+      const t = 0.05;
+      curY += (tgtY - curY) * t;
+      curX += (tgtX - curX) * t;
+      eyes.rotation.y = curY;
+      eyes.rotation.x = curX;
+
+      // ── Blink state machine ─────────────────────────────
+      blinkCountdown -= dt;
+      if (blinkCountdown <= 0 && blinkPhase === "idle") {
+        blinkPhase     = "closing";
+        blinkCountdown = 3500 + Math.random() * 4000; // next blink interval
+      }
+      if (blinkPhase === "closing") {
+        blinkScaleY = Math.max(0, blinkScaleY - dt / 80);  // close in ~80ms
+        if (blinkScaleY <= 0) blinkPhase = "opening";
+      } else if (blinkPhase === "opening") {
+        blinkScaleY = Math.min(1, blinkScaleY + dt / 120); // open in ~120ms
+        if (blinkScaleY >= 1) { blinkScaleY = 1; blinkPhase = "idle"; }
+      }
+      if (eyes.scale) eyes.scale.y = blinkScaleY;
     };
 
-    window.addEventListener("mousemove", onMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMouseMove);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   return (
     <motion.div
-      ref={containerRef}
       animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 14 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       style={{
-        position: "fixed",
-        bottom: "max(28px, calc(env(safe-area-inset-bottom) + 12px))",
-        left: "50%",
-        translateX: "-50%",
-        zIndex: 200,
-        width: SIZE,
-        height: SIZE,
+        position:     "fixed",
+        bottom:       "max(28px, calc(env(safe-area-inset-bottom) + 12px))",
+        left:         "50%",
+        translateX:   "-50%",
+        zIndex:       200,
+        width:        SIZE,
+        height:       SIZE,
         borderRadius: "50%",
-        overflow: "hidden",
-        cursor: "pointer",
+        overflow:     "hidden",
+        cursor:       "pointer",
       }}
     >
       <Spline scene={SCENE} onLoad={handleLoad} />
