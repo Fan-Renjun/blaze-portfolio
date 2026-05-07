@@ -13,26 +13,21 @@ const Spline = dynamic<SplineProps>(
 const SCENE = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE  = 80;
 
-// ── Look states: rotation targets (radians) ────────────────
-// forward 出现 4 次权重，让眼睛大部分时间看正前方
 const LOOK_STATES = [
-  { y:  0.00, x:  0.00 },  // forward ×4
-  { y:  0.00, x:  0.00 },
-  { y:  0.00, x:  0.00 },
-  { y:  0.00, x:  0.00 },
-  { y:  0.40, x:  0.00 },  // left
-  { y: -0.40, x:  0.00 },  // right
-  { y:  0.00, x: -0.22 },  // up
-  { y:  0.00, x:  0.18 },  // down
-  { y:  0.28, x: -0.14 },  // upper-left
-  { y: -0.28, x: -0.14 },  // upper-right
+  { y: 0.00, x: 0.00 },
+  { y: 0.00, x: 0.00 },
+  { y: 0.00, x: 0.00 },
+  { y: 0.45, x: 0.00 },
+  { y: -0.45, x: 0.00 },
+  { y: 0.00, x: -0.25 },
+  { y: 0.00, x: 0.20 },
+  { y: 0.30, x: -0.15 },
+  { y: -0.30, x: -0.15 },
 ];
 
 export function ChatBot() {
   const [shown, setShown] = useState(true);
   const splineRef         = useRef<Application | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const eyesRef           = useRef<any>(null);
 
   // ── Scroll visibility ─────────────────────────────────────
   useEffect(() => {
@@ -48,75 +43,91 @@ export function ChatBot() {
 
   // ── Spline onLoad ─────────────────────────────────────────
   const handleLoad = useCallback((spline: Application) => {
-    if (spline.getAllObjects().length === 0) return; // StrictMode 空场景
+    if (spline.getAllObjects().length === 0) return;
     splineRef.current = spline;
-    eyesRef.current   = spline.findObjectByName("eyes") ?? null;
+
+    const names = spline.getAllObjects().map(o => o.name);
+    console.log("[HIM] objects:", names);
   }, []);
 
-  // ── Random eye animation loop ─────────────────────────────
+  // ── Random eye animation ──────────────────────────────────
   useEffect(() => {
     let rafId: number;
-
-    // Current & target rotation
-    let curY = 0, curX = 0;
-    let tgtY = 0, tgtX = 0;
-
-    // State timer
-    let stateRemaining = 2000;
-
-    // Blink state
-    type BlinkPhase = "idle" | "closing" | "opening";
-    let blinkPhase: BlinkPhase = "idle";
-    let blinkCountdown = 2500 + Math.random() * 3000;
-    let blinkScaleY    = 1;
+    let curY = 0, curX = 0, tgtY = 0, tgtX = 0;
+    let stateMs = 2000, elapsed = 0;
+    let blinkPhase: "idle" | "closing" | "opening" = "idle";
+    let blinkCd = 2500 + Math.random() * 3000;
+    let blinkSY = 1;
+    let lastTs = performance.now();
 
     const nextLook = () => {
       const s = LOOK_STATES[Math.floor(Math.random() * LOOK_STATES.length)];
-      tgtY = s.y;
-      tgtX = s.x;
-      stateRemaining = 1800 + Math.random() * 2800;
+      tgtY = s.y; tgtX = s.x;
+      stateMs = 1800 + Math.random() * 2800;
+      elapsed = 0;
     };
     nextLook();
 
-    let lastTs = performance.now();
+    // Find a target object via both SPEObject wrapper AND raw Three.js traverse
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const findEyes = (): any | null => {
+      const app = splineRef.current;
+      if (!app) return null;
+
+      // Try SPEObject wrapper first
+      const spe = app.findObjectByName("eyes") ??
+                  app.findObjectByName("眼睛Instance");
+      if (spe) return spe;
+
+      // Fallback: traverse raw Three.js scene
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const appAny = app as any;
+      const scene = appAny._scene ?? appAny.scene ?? appAny._root;
+      if (!scene?.traverse) return null;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let found: any = null;
+      scene.traverse((obj: any) => {
+        if (!found && (obj.name === "eyes" || obj.name === "眼睛Instance")) {
+          found = obj;
+        }
+      });
+      return found;
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let eyesObj: any = null;
 
     const tick = (ts: number) => {
-      rafId  = requestAnimationFrame(tick);
-      const dt = ts - lastTs;
-      lastTs   = ts;
+      rafId = requestAnimationFrame(tick);
+      const dt = ts - lastTs; lastTs = ts;
 
-      // Resolve eyes ref lazily (in case onLoad fires after first tick)
-      if (!eyesRef.current && splineRef.current) {
-        eyesRef.current = splineRef.current.findObjectByName("eyes") ?? null;
-      }
-      const eyes = eyesRef.current;
-      if (!eyes) return;
+      // Lazy resolve
+      if (!eyesObj) { eyesObj = findEyes(); return; }
 
-      // ── Look state machine ──────────────────────────────
-      stateRemaining -= dt;
-      if (stateRemaining <= 0) nextLook();
-
-      // Smooth lerp toward target (eyes glide naturally)
+      // Look state
+      elapsed += dt;
+      if (elapsed >= stateMs) nextLook();
       const t = 0.05;
       curY += (tgtY - curY) * t;
       curX += (tgtX - curX) * t;
-      eyes.rotation.y = curY;
-      eyes.rotation.x = curX;
+      eyesObj.rotation.y = curY;
+      eyesObj.rotation.x = curX;
 
-      // ── Blink state machine ─────────────────────────────
-      blinkCountdown -= dt;
-      if (blinkCountdown <= 0 && blinkPhase === "idle") {
-        blinkPhase     = "closing";
-        blinkCountdown = 3500 + Math.random() * 4000; // next blink interval
+      // Blink
+      blinkCd -= dt;
+      if (blinkCd <= 0 && blinkPhase === "idle") {
+        blinkPhase = "closing";
+        blinkCd = 3500 + Math.random() * 4000;
       }
       if (blinkPhase === "closing") {
-        blinkScaleY = Math.max(0, blinkScaleY - dt / 80);  // close in ~80ms
-        if (blinkScaleY <= 0) blinkPhase = "opening";
+        blinkSY = Math.max(0, blinkSY - dt / 80);
+        if (blinkSY <= 0) blinkPhase = "opening";
       } else if (blinkPhase === "opening") {
-        blinkScaleY = Math.min(1, blinkScaleY + dt / 120); // open in ~120ms
-        if (blinkScaleY >= 1) { blinkScaleY = 1; blinkPhase = "idle"; }
+        blinkSY = Math.min(1, blinkSY + dt / 120);
+        if (blinkSY >= 1) { blinkSY = 1; blinkPhase = "idle"; }
       }
-      if (eyes.scale) eyes.scale.y = blinkScaleY;
+      if (eyesObj.scale) eyesObj.scale.y = blinkSY;
     };
 
     rafId = requestAnimationFrame(tick);
