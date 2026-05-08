@@ -201,8 +201,8 @@ export const FITNESS: FitnessData = {
   squat: { name: "深蹲 1RM", val: "120 kg", delta: "+7.5" },
   dead:  { name: "硬拉 1RM", val: "110 kg", delta: "+10"  },
   ohp:   { name: "推举 1RM", val: "50 kg",  delta: "+2.5" },
-  avgHr: 142,
-  kcal: 738,
+  avgHr: 80,
+  kcal: 742,
   bodyFat: 13,
   heat: Array.from({ length: 26 * 7 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;

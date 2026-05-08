@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────
-type Tab = "dashboard" | "photos" | "articles" | "projects";
+type Tab = "dashboard" | "photos" | "articles" | "projects" | "fitness";
 type Status = { type: "idle" | "loading" | "success" | "error"; msg?: string };
 
 interface PhotoQueueItem {
@@ -466,12 +466,251 @@ function StatusMsg({ status }: { status: Status }) {
   );
 }
 
+// ─── HEIC → JPEG 转换 + Canvas 压缩 ──────────────────────────
+async function prepareImage(file: File, maxPx = 1200, quality = 0.8): Promise<{ base64: string; name: string }> {
+  let blob: Blob = file;
+  let name = file.name;
+
+  // HEIC / HEIF → JPEG（浏览器不支持直接渲染 HEIC）
+  const isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif";
+  if (isHeic) {
+    const heic2any = (await import("heic2any")).default;
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    blob = Array.isArray(converted) ? converted[0] : converted;
+    name = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+  }
+
+  // Canvas 压缩到 maxPx
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                 { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+
+  return { base64, name: name.replace(/\.[^.]+$/, ".jpg") };
+}
+
+// ─── FitnessAdmin ─────────────────────────────────────────────
+type PhotoQueueItemFit = {
+  id: string;
+  file: File;
+  preview: string;
+  caption: string;
+  date: string;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [statStatus, setStatStatus] = useState<Status>({ type: "idle" });
+  const [weekHours,  setWeekHours]  = useState("");
+  const [totalKm,    setTotalKm]    = useState("");
+  const [weekStart,  setWeekStart]  = useState(new Date().toISOString().slice(0, 10));
+  const [note,       setNote]       = useState("");
+  const [queue,      setQueue]      = useState<PhotoQueueItemFit[]>([]);
+  const [uploading,  setUploading]  = useState(false);
+
+  const saveStat = async () => {
+    if (!weekHours || !totalKm) return;
+    setStatStatus({ type: "loading" });
+    const res  = await fetch("/api/admin/fitness/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ week_start: weekStart, week_hours: weekHours, total_km: totalKm, note }),
+    });
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : {};
+    setStatStatus(res.ok ? { type: "success", msg: "已保存" } : { type: "error", msg: json.error ?? `HTTP ${res.status}` });
+    if (res.ok) { setWeekHours(""); setTotalKm(""); setNote(""); }
+  };
+
+  const onFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const items: PhotoQueueItemFit[] = files.map(f => ({
+      id: `${f.name}-${Date.now()}-${Math.random()}`,
+      file: f,
+      preview: URL.createObjectURL(f),
+      caption: "",
+      date: "",
+      status: "pending",
+    }));
+    setQueue(prev => [...prev, ...items]);
+    e.target.value = "";
+  };
+
+  const updateItem = (id: string, patch: Partial<PhotoQueueItemFit>) =>
+    setQueue(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+
+  const removeItem = (id: string) => {
+    setQueue(prev => {
+      const item = prev.find(it => it.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter(it => it.id !== id);
+    });
+  };
+
+  const uploadAll = async () => {
+    const pending = queue.filter(it => it.status === "pending");
+    if (!pending.length) return;
+    setUploading(true);
+    for (const item of pending) {
+      updateItem(item.id, { status: "uploading" });
+      // HEIC 自动转 JPEG，再压缩到 1200px / 80%
+      const { base64: fileBase64, name: fileName } = await prepareImage(item.file, 1200, 0.8);
+      const res  = await fetch("/api/admin/fitness/photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileBase64, fileName, caption: item.caption, taken_at: item.date }),
+      });
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+      updateItem(item.id, res.ok ? { status: "done" } : { status: "error", error: json.error ?? `HTTP ${res.status}` });
+    }
+    setUploading(false);
+  };
+
+  const clearDone = () => {
+    setQueue(prev => {
+      prev.filter(it => it.status === "done").forEach(it => URL.revokeObjectURL(it.preview));
+      return prev.filter(it => it.status !== "done");
+    });
+  };
+
+  const statusColor = (s: PhotoQueueItemFit["status"]) =>
+    s === "done" ? "#5BD68C" : s === "error" ? "#FF6B6B" : s === "uploading" ? "#007AFF" : "#555";
+
+  const statusLabel = (it: PhotoQueueItemFit) =>
+    it.status === "done" ? "✓ 完成" : it.status === "error" ? `✗ ${it.error ?? "失败"}` : it.status === "uploading" ? "上传中…" : "待上传";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+      {/* ── 周数据 ── */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>记录本周数据</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[
+            { label: "周开始日期",       type: "date",   val: weekStart,  set: setWeekStart,  ph: "" },
+            { label: "训练时长（小时）", type: "number", val: weekHours,  set: setWeekHours,  ph: "6.5" },
+            { label: "累计公里数（km）", type: "number", val: totalKm,    set: setTotalKm,    ph: "412.5" },
+            { label: "备注（可选）",     type: "text",   val: note,       set: setNote,       ph: "本周完成了五次训练" },
+          ].map(({ label, type, val, set, ph }) => (
+            <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</span>
+              <input type={type} step={type === "number" ? "0.1" : undefined} placeholder={ph}
+                value={val} onChange={e => set(e.target.value)} style={inp} />
+            </label>
+          ))}
+        </div>
+        <button onClick={saveStat} disabled={statStatus.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
+          {statStatus.type === "loading" ? "保存中…" : "保存周数据"}
+        </button>
+        {statStatus.type !== "idle" && (
+          <p style={{ marginTop: 10, fontSize: 12, color: statStatus.type === "success" ? "#5BD68C" : "#FF6B6B" }}>{statStatus.msg}</p>
+        )}
+      </div>
+
+      {/* ── 批量上传健身照片 ── */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5" }}>批量上传健身照片</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            {queue.some(it => it.status === "done") && (
+              <button onClick={clearDone} style={{ ...btnSecondary }}>清除已完成</button>
+            )}
+            <button onClick={() => fileRef.current?.click()} style={{ ...btnSecondary }}>+ 选择图片</button>
+          </div>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFilesChange} style={{ display: "none" }} />
+
+        {queue.length === 0 ? (
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{ border: "2px dashed #1e1e26", borderRadius: 12, padding: "40px 24px",
+              textAlign: "center", color: "#333", cursor: "pointer", fontSize: 13 }}
+          >
+            点击或拖拽图片到这里（支持多选）
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {queue.map(item => (
+              <div key={item.id} style={{ display: "grid", gridTemplateColumns: "64px 1fr auto",
+                gap: 12, alignItems: "center", background: "#0c0c0f",
+                borderRadius: 10, padding: "10px 14px", border: "1px solid #1e1e26" }}>
+                {/* 预览 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.preview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
+                {/* 信息 */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.file.name}
+                  </span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="text" placeholder="描述（可选）" value={item.caption}
+                      onChange={e => updateItem(item.id, { caption: e.target.value })}
+                      disabled={item.status !== "pending"}
+                      style={{ ...inp, flex: 1, fontSize: 12, padding: "6px 10px" }}
+                    />
+                    <input
+                      type="date" value={item.date}
+                      onChange={e => updateItem(item.id, { date: e.target.value })}
+                      disabled={item.status !== "pending"}
+                      style={{ ...inp, width: 130, fontSize: 12, padding: "6px 10px" }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 11, color: statusColor(item.status) }}>{statusLabel(item)}</span>
+                </div>
+                {/* 删除 */}
+                {item.status === "pending" && (
+                  <button onClick={() => removeItem(item.id)}
+                    style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {queue.some(it => it.status === "pending") && (
+          <button onClick={uploadAll} disabled={uploading}
+            style={{ ...btnPrimary, marginTop: 16, width: "100%" }}>
+            {uploading ? "上传中…" : `上传全部（${queue.filter(it => it.status === "pending").length} 张）`}
+          </button>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+const inp: React.CSSProperties = { background: "#0c0c0f", border: "1px solid #1e1e26", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#eeeef5", outline: "none", width: "100%", boxSizing: "border-box" };
+const btnPrimary: React.CSSProperties = { background: "#007AFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 500 };
+const btnSecondary: React.CSSProperties = { background: "transparent", border: "1px solid #1e1e26", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#888", cursor: "pointer" };
+
 // ─── Main page ────────────────────────────────────────────────
 const NAV: { key: Tab; label: string; icon: string }[] = [
   { key: "dashboard", label: "概览",  icon: "📊" },
   { key: "photos",    label: "照片",  icon: "📷" },
   { key: "articles",  label: "文章",  icon: "📝" },
   { key: "projects",  label: "项目",  icon: "📁" },
+  { key: "fitness",   label: "健身",  icon: "🏋️" },
 ];
 
 const TITLES: Record<Tab, string> = {
@@ -479,6 +718,7 @@ const TITLES: Record<Tab, string> = {
   photos:    "照片管理",
   articles:  "文章管理",
   projects:  "项目管理",
+  fitness:   "健身管理",
 };
 
 export default function AdminPage() {
@@ -532,6 +772,7 @@ export default function AdminPage() {
           {tab === "photos"    && <PhotosAdmin supabase={supabase} />}
           {tab === "articles"  && <ArticlesAdmin supabase={supabase} />}
           {tab === "projects"  && <ProjectsAdmin supabase={supabase} />}
+          {tab === "fitness"   && <FitnessAdmin  supabase={supabase} />}
         </div>
       </main>
     </div>

@@ -31,6 +31,23 @@ export type Photo = {
   created_at: string;
 };
 
+export type FitnessStat = {
+  id: string;
+  week_start: string;
+  week_hours: number;
+  total_km: number;
+  note: string | null;
+  created_at: string;
+};
+
+export type FitnessPhoto = {
+  id: string;
+  photo_url: string;
+  caption: string | null;
+  taken_at: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {

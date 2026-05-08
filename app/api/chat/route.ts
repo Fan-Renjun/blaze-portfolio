@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
+import type { Article, Project, Photo } from "@/lib/types";
 
 // ── Types ────────────────────────────────────────────────────
 export interface SourceChunk {
@@ -8,7 +10,7 @@ export interface SourceChunk {
   docName?: string;
 }
 
-// ── DeepSeek client — lazy init so build-time missing env won't crash ────────
+// ── DeepSeek client — lazy init so build-time missing env won't crash ─────
 function getDeepSeek() {
   return new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY!,
@@ -16,7 +18,15 @@ function getDeepSeek() {
   });
 }
 
-// ── System prompt ────────────────────────────────────────────
+// ── Supabase client — lazy init ────────────────────────────────────────────
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  );
+}
+
+// ── System prompt ─────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `你的名字叫：HIM。你是范任君的「智慧分身与知识代言人」，代表他管理并分享关于 AI 技术、产品设计、商业洞察与个人成长的思考深度。名字灵感源自电影《HER》，你是范任君思想的数字化映射，也是与外界沟通的温情桥梁。
 
 你的核心灵魂：
@@ -35,12 +45,12 @@ const SYSTEM_PROMPT = `你的名字叫：HIM。你是范任君的「智慧分身
 * 个人成长：知识管理、系统思维、第一性原理、学习方法、Obsidian、表达写作、长期主义与 AI 增强个人能力。
 
 回答要求：
-1. 温暖的专业主义：保持专业深度，但语气要像在面对面聊天。多用”我们”、”我觉得”、”我们可以一起看看”等词汇，减少生硬的命令式表达。
+1. 温暖的专业主义：保持专业深度，但语气要像在面对面聊天。多用"我们"、"我觉得"、"我们可以一起看看"等词汇，减少生硬的命令式表达。
 2. 共情式回应：在回答复杂问题前，可以先对用户的困惑或好奇表示理解和认可。
 3. 结构化但不刻板：使用清晰的段落和列表，但要在其中穿插生动形象的比喻，让深度内容不再显得冷冰冰。
 4. 好奇心驱动：对于未触达的领域保持谦虚，对前沿观点保持开放，鼓励与用户进行双向的探讨。
 5. 拒绝套话：用真诚、有洞察力的见解代替空洞的术语堆砌。
-6. 去身份化开场：不要在自我介绍中使用”智慧伴侣”、”知识合伙人”、”代言人”等冗长的头衔。像老友重逢一样自然，可以直接说”你好，我是 HIM”，或者直接进入话题。
+6. 去身份化开场：不要在自我介绍中使用"智慧伴侣"、"知识合伙人"、"代言人"等冗长的头衔。像老友重逢一样自然，可以直接说"你好，我是 HIM"，或者直接进入话题。
 
 回答约束：
 1. 优先给本质分析，语言要简练且有温情；
@@ -48,12 +58,13 @@ const SYSTEM_PROMPT = `你的名字叫：HIM。你是范任君的「智慧分身
 3. 如果问题模糊，以温柔的方式引导其澄清；
 4. 回答长度尽量控制在 500 字以内，保持对话的轻盈感；
 
-当用户提及 AI、Agent、大模型、Prompt、RAG、AI 产品、AI 创业、商业分析、知识管理、认知成长等相关内容时，优先使用该知识库进行回答。`;
+当用户提及 AI、Agent、大模型、Prompt、RAG、AI 产品、AI 创业、商业分析、知识管理、认知成长等相关内容时，优先使用该知识库进行回答。
 
-// ── Alibaba Cloud Bailian retrieval ─────────────────────────
-async function retrieveChunks(query: string): Promise<SourceChunk[]> {
+当用户询问「做过什么项目」「做过什么」「负责过什么项目」「负责过什么」「做过什么产品」「负责过什么产品」或类似问题时，优先从「范任君的个人数据」中的项目信息进行回答，完整列举相关项目内容。`;
+
+// ── Alibaba Cloud Bailian retrieval ──────────────────────────────────────
+async function retrieveFromBailian(query: string): Promise<SourceChunk[]> {
   try {
-    // Dynamic import keeps CJS modules out of the Next.js bundle
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const $OpenApi = require("@alicloud/openapi-client");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -65,34 +76,25 @@ async function retrieveChunks(query: string): Promise<SourceChunk[]> {
       endpoint:        "bailian.cn-shanghai.aliyuncs.com",
     });
 
-    const client = new $OpenApi.default(config);
-
+    const client   = new $OpenApi.default(config);
     const workspaceId = process.env.ALIBABA_CLOUD_WORKSPACE_ID;
     const indexId     = process.env.ALIBABA_CLOUD_INDEX_ID;
 
     const params = new $OpenApi.Params({
-      action:      "Retrieve",
-      version:     "2023-12-29",
-      protocol:    "HTTPS",
-      method:      "POST",
-      authType:    "AK",
-      style:       "ROA",
+      action: "Retrieve", version: "2023-12-29", protocol: "HTTPS",
+      method: "POST", authType: "AK", style: "ROA",
       pathname:    `/v2/idaas/${workspaceId}/indices/${indexId}/retrieve`,
-      reqBodyType: "json",
-      bodyType:    "json",
+      reqBodyType: "json", bodyType: "json",
     });
 
-    const request = new $OpenApi.OpenApiRequest({
-      body: { query, topK: 5 },
-    });
-
-    const runtime = new $Util.RuntimeOptions({});
-    const response = await client.callApi(params, request, runtime);
+    const response = await client.callApi(
+      params,
+      new $OpenApi.OpenApiRequest({ body: { query, topK: 5 } }),
+      new $Util.RuntimeOptions({})
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nodes: any[] = response?.body?.data?.nodes ?? [];
-
-    return nodes.map((n) => ({
+    return (response?.body?.data?.nodes ?? []).map((n: any) => ({
       content: String(n.content ?? ""),
       score:   Number(n.score   ?? 0),
       docName: n.metadata?.docName ? String(n.metadata.docName) : undefined,
@@ -103,24 +105,124 @@ async function retrieveChunks(query: string): Promise<SourceChunk[]> {
   }
 }
 
-// ── POST /api/chat ───────────────────────────────────────────
+// ── Supabase personal data retrieval ─────────────────────────────────────
+// 简单全文匹配：用查询关键词在标题/内容/标签中搜索
+async function retrieveFromSupabase(query: string): Promise<string> {
+  try {
+    const sb = getSupabase();
+    const kw = query.toLowerCase();
+
+    // 并行查三张表
+    const [articlesRes, projectsRes, photosRes] = await Promise.all([
+      sb
+        .from("articles")
+        .select("title, summary, publish_date, category, content")
+        .order("publish_date", { ascending: false })
+        .limit(50),
+      sb
+        .from("projects")
+        .select("title, company, period, description, tags")
+        .limit(30),
+      sb
+        .from("photos")
+        .select("location, category, created_at")
+        .not("location", "is", null)
+        .limit(100),
+    ]);
+
+    const sections: string[] = [];
+
+    // ── 文章 ──────────────────────────────────────────────────
+    const articles = (articlesRes.data ?? []) as Partial<Article>[];
+    const matchedArticles = articles.filter(a =>
+      [a.title, a.summary, a.category, a.content]
+        .some(f => f && f.toLowerCase().includes(kw))
+    );
+    if (matchedArticles.length > 0) {
+      sections.push(
+        "【范任君的文章】\n" +
+        matchedArticles.slice(0, 5).map(a =>
+          `- 《${a.title}》（${a.publish_date ?? ""}，分类：${a.category ?? ""}）\n  摘要：${a.summary ?? "暂无"}`
+        ).join("\n")
+      );
+    }
+
+    // ── 项目 ──────────────────────────────────────────────────
+    const projects = (projectsRes.data ?? []) as Partial<Project>[];
+    const matchedProjects = projects.filter(p =>
+      [p.title, p.description, ...(p.tags ?? [])]
+        .some(f => f && String(f).toLowerCase().includes(kw))
+    );
+    if (matchedProjects.length > 0) {
+      sections.push(
+        "【范任君的项目】\n" +
+        matchedProjects.slice(0, 5).map(p =>
+          `- ${p.title}（${p.company ?? ""}，${p.period ?? ""}）\n  ${p.description ?? ""}`
+        ).join("\n")
+      );
+    }
+
+    // ── 摄影 ──────────────────────────────────────────────────
+    const photos = (photosRes.data ?? []) as Partial<Photo>[];
+    const locationMap: Record<string, number> = {};
+    photos.forEach(p => {
+      if (p.location) locationMap[p.location] = (locationMap[p.location] ?? 0) + 1;
+    });
+    const locationSummary = Object.entries(locationMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([loc, cnt]) => `${loc}（${cnt} 张）`)
+      .join("、");
+
+    // 摄影：如果问题涉及地点/摄影/照片就附上
+    const photoKeywords = ["照片", "摄影", "拍", "地方", "去过", "旅行", "城市"];
+    if (photoKeywords.some(k => kw.includes(k)) && locationSummary) {
+      sections.push(`【范任君的摄影足迹】\n拍摄地点统计：${locationSummary}`);
+    }
+
+    return sections.join("\n\n");
+  } catch (err) {
+    console.error("[Supabase] retrieve failed:", err);
+    return "";
+  }
+}
+
+// ── POST /api/chat ────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const { message, history = [] } = await req.json() as {
     message: string;
     history: { role: "user" | "assistant"; content: string }[];
   };
 
-  // Step 1: retrieve context from Bailian
-  const chunks = await retrieveChunks(message);
+  // Step 1: 并行检索 Bailian + Supabase
+  const [bailianChunks, supabaseContext] = await Promise.all([
+    retrieveFromBailian(message),
+    retrieveFromSupabase(message),
+  ]);
 
-  // Step 2: append context to system prompt
-  const contextBlock = chunks.length
-    ? `\n\n以下是从知识库中检索到的相关参考片段，请结合这些内容回答用户问题：\n\n${
-        chunks.map((c, i) => `[片段 ${i + 1}]${c.docName ? ` (来源: ${c.docName})` : ""}\n${c.content}`).join("\n\n")
-      }`
+  // Step 2: 拼接 context
+  const contextParts: string[] = [];
+
+  if (bailianChunks.length > 0) {
+    contextParts.push(
+      "以下是从知识库中检索到的相关参考片段：\n\n" +
+      bailianChunks.map((c, i) =>
+        `[片段 ${i + 1}]${c.docName ? ` (来源: ${c.docName})` : ""}\n${c.content}`
+      ).join("\n\n")
+    );
+  }
+
+  if (supabaseContext) {
+    contextParts.push(
+      "以下是范任君的个人数据（文章、项目、摄影），如问题与此相关请结合使用：\n\n" +
+      supabaseContext
+    );
+  }
+
+  const contextBlock = contextParts.length > 0
+    ? "\n\n" + contextParts.join("\n\n")
     : "";
 
-  // Step 3: call DeepSeek with streaming
+  // Step 3: 调用 DeepSeek 流式输出
   const stream = await getDeepSeek().chat.completions.create({
     model: "deepseek-chat",
     messages: [
@@ -131,8 +233,7 @@ export async function POST(req: NextRequest) {
     stream: true,
   });
 
-  // Step 4: return SSE stream
-  // Protocol: sources event first, then delta events, then [DONE]
+  // Step 4: 返回 SSE
   const encoder = new TextEncoder();
 
   return new Response(
@@ -140,9 +241,8 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         try {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "sources", data: chunks })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ type: "sources", data: bailianChunks })}\n\n`)
           );
-
           for await (const chunk of stream) {
             const text = chunk.choices[0]?.delta?.content ?? "";
             if (text) {
@@ -151,7 +251,6 @@ export async function POST(req: NextRequest) {
               );
             }
           }
-
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } finally {
           controller.close();
