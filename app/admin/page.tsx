@@ -466,11 +466,24 @@ function StatusMsg({ status }: { status: Status }) {
   );
 }
 
-// ─── Image compressor (Canvas API) ───────────────────────────
-function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
-  return new Promise((resolve, reject) => {
+// ─── HEIC → JPEG 转换 + Canvas 压缩 ──────────────────────────
+async function prepareImage(file: File, maxPx = 1200, quality = 0.8): Promise<{ base64: string; name: string }> {
+  let blob: Blob = file;
+  let name = file.name;
+
+  // HEIC / HEIF → JPEG（浏览器不支持直接渲染 HEIC）
+  const isHeic = /\.(heic|heif)$/i.test(file.name) || file.type === "image/heic" || file.type === "image/heif";
+  if (isHeic) {
+    const heic2any = (await import("heic2any")).default;
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    blob = Array.isArray(converted) ? converted[0] : converted;
+    name = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+  }
+
+  // Canvas 压缩到 maxPx
+  const base64 = await new Promise<string>((resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(blob);
     img.onload = () => {
       let { width, height } = img;
       if (width > maxPx || height > maxPx) {
@@ -486,6 +499,8 @@ function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string>
     img.onerror = reject;
     img.src = url;
   });
+
+  return { base64, name: name.replace(/\.[^.]+$/, ".jpg") };
 }
 
 // ─── FitnessAdmin ─────────────────────────────────────────────
@@ -555,12 +570,12 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
     setUploading(true);
     for (const item of pending) {
       updateItem(item.id, { status: "uploading" });
-      // 压缩图片到最大 1200px / JPEG 80%，避免 base64 过大导致 JSON 解析失败
-      const fileBase64 = await compressImage(item.file, 1200, 0.8);
+      // HEIC 自动转 JPEG，再压缩到 1200px / 80%
+      const { base64: fileBase64, name: fileName } = await prepareImage(item.file, 1200, 0.8);
       const res  = await fetch("/api/admin/fitness/photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileBase64, fileName: item.file.name.replace(/\.[^.]+$/, ".jpg"), caption: item.caption, taken_at: item.date }),
+        body: JSON.stringify({ fileBase64, fileName, caption: item.caption, taken_at: item.date }),
       });
       const text = await res.text();
       const json = text ? JSON.parse(text) : {};
