@@ -146,47 +146,48 @@ export function ChatBot() {
 
   return (
     <>
-      {/* ── 球体（始终挂载，idle 时可见） ── */}
-      <motion.div
-        animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        onClick={() => { if (phase === "idle") { setShown(true); setPhase("active"); } }}
-        style={{
-          position:     "fixed",
-          bottom:       BOTTOM,
-          left:         "50%",
-          transform:    "translateX(-50%)",
-          zIndex:       200,
-          width:        SIZE,
-          height:       SIZE,
-          borderRadius: "50%",
-          overflow:     "hidden",
-          cursor:       "pointer",
-          pointerEvents: phase === "idle" ? "auto" : "none",
-        }}
-      >
-        <Spline scene={SCENE} onLoad={handleLoad} />
-      </motion.div>
+      {/* ── 球体：外层 div 负责定位，motion.div 只负责动画 ── */}
+      {/* 分离定位与动画，防止 framer-motion transform 覆盖 translateX(-50%) */}
+      <div style={{
+        position: "fixed", bottom: BOTTOM,
+        left: "50%", transform: "translateX(-50%)",
+        zIndex: 200, width: SIZE, height: SIZE,
+        pointerEvents: phase === "idle" ? "auto" : "none",
+      }}>
+        <motion.div
+          animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          onClick={() => { if (phase === "idle") { setShown(true); setPhase("active"); } }}
+          style={{
+            width: "100%", height: "100%",
+            borderRadius: "50%", overflow: "hidden", cursor: "pointer",
+          }}
+        >
+          <Spline scene={SCENE} onLoad={handleLoad} />
+        </motion.div>
+      </div>
 
-      {/* ── 输入框 + 对话面板 ── */}
+      {/* ── 输入框 + 对话面板：同样分离定位与动画 ── */}
       <AnimatePresence>
         {phase === "active" && (
+          // 外层 div：fixed 定位 + 水平居中（静态 CSS，不受 framer-motion 影响）
+          <div
+            key="chat-anchor"
+            ref={containerRef}
+            style={{
+              position: "fixed", bottom: BOTTOM,
+              left: "50%", transform: "translateX(-50%)",
+              zIndex: 200,
+              width: PANELW, maxWidth: "calc(100vw - 32px)",
+            }}
+          >
+          {/* 内层 motion.div：只做 opacity + y 动画 */}
           <motion.div
             key="chat"
-            ref={containerRef}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 10 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            style={{
-              position:  "fixed",
-              bottom:    BOTTOM,
-              left:      "50%",
-              transform: "translateX(-50%)",
-              zIndex:    200,
-              width:     PANELW,
-              maxWidth:  "calc(100vw - 32px)",
-            }}
             className="flex flex-col gap-2"
           >
             {/* ── 对话面板 ── */}
@@ -334,6 +335,7 @@ export function ChatBot() {
               )}
             </div>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>
