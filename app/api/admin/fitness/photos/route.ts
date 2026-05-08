@@ -3,21 +3,25 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file     = formData.get("file") as File | null;
-    const caption  = (formData.get("caption") as string | null) || null;
-    const taken_at = (formData.get("taken_at") as string | null) || null;
+    const { fileBase64, fileName, caption, taken_at } = await req.json() as {
+      fileBase64: string;
+      fileName:   string;
+      caption?:   string;
+      taken_at?:  string;
+    };
 
-    if (!file) return NextResponse.json({ error: "未选择文件" }, { status: 400 });
+    if (!fileBase64 || !fileName) {
+      return NextResponse.json({ error: "缺少文件数据" }, { status: 400 });
+    }
+
+    // base64 data URL → ArrayBuffer
+    const base64Data = fileBase64.includes(",") ? fileBase64.split(",")[1] : fileBase64;
+    const buffer     = Buffer.from(base64Data, "base64");
+    const ext        = fileName.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path       = `${Date.now()}.${ext}`;
+    const contentType = `image/${ext === "jpg" ? "jpeg" : ext}`;
 
     const supabase = createAdminClient();
-
-    // 读取文件内容为 ArrayBuffer（Next.js API route 中更可靠）
-    const buffer = await file.arrayBuffer();
-    const ext    = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path   = `${Date.now()}.${ext}`;
-
-    const contentType = file.type || `image/${ext}`;
 
     // 上传到 Storage Fitness bucket
     const { error: upErr } = await supabase.storage
@@ -25,28 +29,27 @@ export async function POST(req: NextRequest) {
       .upload(path, buffer, { contentType, upsert: true });
 
     if (upErr) {
-      console.error("[fitness/photos] storage upload error:", upErr);
+      console.error("[fitness/photos] storage:", upErr);
       return NextResponse.json({ error: `Storage: ${upErr.message}` }, { status: 500 });
     }
 
-    // 获取公开 URL
     const { data: urlData } = supabase.storage.from("Fitness").getPublicUrl(path);
 
     // 写入 fitness_photos 表
     const { error: dbErr } = await supabase.from("fitness_photos").insert({
       photo_url: urlData.publicUrl,
-      caption,
+      caption:   caption  || null,
       taken_at:  taken_at || null,
     });
 
     if (dbErr) {
-      console.error("[fitness/photos] db insert error:", dbErr);
+      console.error("[fitness/photos] db:", dbErr);
       return NextResponse.json({ error: `DB: ${dbErr.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, url: urlData.publicUrl });
   } catch (err) {
-    console.error("[fitness/photos] unexpected error:", err);
+    console.error("[fitness/photos] unexpected:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

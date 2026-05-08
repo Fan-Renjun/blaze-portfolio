@@ -533,11 +533,18 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
     setUploading(true);
     for (const item of pending) {
       updateItem(item.id, { status: "uploading" });
-      const fd = new FormData();
-      fd.append("file",     item.file);
-      fd.append("caption",  item.caption);
-      fd.append("taken_at", item.date);
-      const res  = await fetch("/api/admin/fitness/photos", { method: "POST", body: fd });
+      // 用 FileReader 转 base64，避免 FormData 在 Next.js App Router 中的兼容问题
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(item.file);
+      });
+      const res  = await fetch("/api/admin/fitness/photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileBase64, fileName: item.file.name, caption: item.caption, taken_at: item.date }),
+      });
       const text = await res.text();
       const json = text ? JSON.parse(text) : {};
       updateItem(item.id, res.ok ? { status: "done" } : { status: "error", error: json.error ?? `HTTP ${res.status}` });
