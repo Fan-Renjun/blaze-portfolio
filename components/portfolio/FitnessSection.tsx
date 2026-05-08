@@ -192,6 +192,14 @@ export function FitnessSection() {
             <div className="fit-data-col">
               <div className="fit-grid">
 
+                {/* 训练瞬间照片 — 3 个指标卡上方，无外框 */}
+                {photos.length > 0 && (
+                  <div className="fit-c-12" style={{ paddingBottom: 8 }}>
+                    <p className="fit-stack-label" style={{ marginBottom: 12 }}>训练瞬间</p>
+                    <FitnessPhotoStack photos={photos} />
+                  </div>
+                )}
+
                 <div className="fit-card fit-c-4">
                   <div className="label">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -252,20 +260,6 @@ export function FitnessSection() {
                   </div>
                 </div>
 
-                {/* 训练瞬间照片 */}
-                {photos.length > 0 && (
-                  <div className="fit-card fit-c-12" style={{ overflow: "visible" }}>
-                    <div className="label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <path d="M21 15l-5-5L5 21"/>
-                      </svg>
-                      训练瞬间
-                    </div>
-                    <FitnessPhotoStack photos={photos} />
-                  </div>
-                )}
 
               </div>
             </div>
