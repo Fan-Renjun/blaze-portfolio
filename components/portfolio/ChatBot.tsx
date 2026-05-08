@@ -262,17 +262,23 @@ export function ChatBot() {
 
             {/* ── 输入框 ── */}
             <div
-              className="flex items-center gap-2.5 rounded-2xl px-4"
+              className="flex items-center gap-3 rounded-2xl px-4"
               style={{
-                minHeight:          52,
-                background:         "rgba(5,10,26,0.85)",
-                backdropFilter:     "blur(40px) saturate(160%)",
+                minHeight:            52,
+                background:           "rgba(6,8,24,0.92)",
+                backdropFilter:       "blur(40px) saturate(160%)",
                 WebkitBackdropFilter: "blur(40px) saturate(160%)",
-                border:             "1px solid rgba(255,255,255,0.11)",
-                boxShadow:          "0 8px 40px rgba(0,3,20,0.55)",
+                border:               "1.5px solid rgba(99,130,255,0.65)",
+                boxShadow:            "0 0 0 3px rgba(99,130,255,0.10), 0 8px 40px rgba(0,3,20,0.55)",
                 ...shownStyle,
               }}
             >
+              {/* Sparkle icon */}
+              <svg viewBox="0 0 20 20" className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(99,130,255,0.85)" }}>
+                <path fill="currentColor" d="M10 1.5a.6.6 0 0 1 .574.425l1.37 4.43 4.43 1.37a.6.6 0 0 1 0 1.148l-4.43 1.37-1.37 4.43a.6.6 0 0 1-1.148 0l-1.37-4.43-4.43-1.37a.6.6 0 0 1 0-1.148l4.43-1.37 1.37-4.43A.6.6 0 0 1 10 1.5Z"/>
+                <path fill="currentColor" d="M16 1a.4.4 0 0 1 .383.284l.68 2.204 2.203.68a.4.4 0 0 1 0 .764l-2.203.68-.68 2.204a.4.4 0 0 1-.764 0l-.68-2.204-2.203-.68a.4.4 0 0 1 0-.764l2.203-.68.68-2.204A.4.4 0 0 1 16 1Z" opacity=".6"/>
+              </svg>
+
               <textarea
                 ref={inputRef}
                 value={input}
@@ -281,7 +287,7 @@ export function ChatBot() {
                 rows={1}
                 placeholder="问问 HIM 吧~"
                 disabled={loading}
-                className="flex-1 bg-transparent text-white/82 placeholder-white/30 text-[13px]
+                className="flex-1 bg-transparent text-white/85 placeholder-white/35 text-[13.5px]
                   resize-none outline-none leading-relaxed py-3.5 disabled:opacity-40"
                 style={{ fieldSizing: "content" } as React.CSSProperties}
               />
