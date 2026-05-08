@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
+
+// Vercel Serverless: 允许最长 60 秒执行（流式输出需要）
+export const maxDuration = 60;
 import { createClient } from "@supabase/supabase-js";
 import type { Article, Project, Photo } from "@/lib/types";
 
