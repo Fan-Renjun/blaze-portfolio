@@ -1071,6 +1071,13 @@ html, body { overscroll-behavior: none }
 
 /* ─── Fitness ────────────────────────────────────────────── */
 /* ── Fitness section two-column layout ───────────────────── */
+.fit-photo-row {
+  margin-bottom: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .fit-layout {
   display: grid;
   grid-template-columns: 320px 1fr;

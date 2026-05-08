@@ -467,23 +467,31 @@ function StatusMsg({ status }: { status: Status }) {
 }
 
 // ─── FitnessAdmin ─────────────────────────────────────────────
-// 写入操作走 server-side API routes（使用 service_role key 绕过 RLS）
+type PhotoQueueItemFit = {
+  id: string;
+  file: File;
+  preview: string;
+  caption: string;
+  date: string;
+  status: "pending" | "uploading" | "done" | "error";
+  error?: string;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [statStatus,   setStatStatus]  = useState<Status>({ type: "idle" });
-  const [photoStatus,  setPhotoStatus] = useState<Status>({ type: "idle" });
-  const [weekHours,    setWeekHours]   = useState("");
-  const [totalKm,      setTotalKm]     = useState("");
-  const [weekStart,    setWeekStart]   = useState(new Date().toISOString().slice(0, 10));
-  const [note,         setNote]        = useState("");
-  const [photoCaption, setPhotoCaption] = useState("");
-  const [photoDate,    setPhotoDate]   = useState("");
+  const [statStatus, setStatStatus] = useState<Status>({ type: "idle" });
+  const [weekHours,  setWeekHours]  = useState("");
+  const [totalKm,    setTotalKm]    = useState("");
+  const [weekStart,  setWeekStart]  = useState(new Date().toISOString().slice(0, 10));
+  const [note,       setNote]       = useState("");
+  const [queue,      setQueue]      = useState<PhotoQueueItemFit[]>([]);
+  const [uploading,  setUploading]  = useState(false);
 
   const saveStat = async () => {
     if (!weekHours || !totalKm) return;
     setStatStatus({ type: "loading" });
-    const res = await fetch("/api/admin/fitness/stats", {
+    const res  = await fetch("/api/admin/fitness/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ week_start: weekStart, week_hours: weekHours, total_km: totalKm, note }),
@@ -493,43 +501,80 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
     if (res.ok) { setWeekHours(""); setTotalKm(""); setNote(""); }
   };
 
-  const uploadPhoto = async () => {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
-    setPhotoStatus({ type: "loading" });
-    const fd = new FormData();
-    fd.append("file",     file);
-    fd.append("caption",  photoCaption);
-    fd.append("taken_at", photoDate);
-    const res  = await fetch("/api/admin/fitness/photos", { method: "POST", body: fd });
-    const json = await res.json();
-    setPhotoStatus(res.ok ? { type: "success", msg: "照片已上传" } : { type: "error", msg: json.error });
-    if (res.ok) { setPhotoCaption(""); setPhotoDate(""); if (fileRef.current) fileRef.current.value = ""; }
+  const onFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const items: PhotoQueueItemFit[] = files.map(f => ({
+      id: `${f.name}-${Date.now()}-${Math.random()}`,
+      file: f,
+      preview: URL.createObjectURL(f),
+      caption: "",
+      date: "",
+      status: "pending",
+    }));
+    setQueue(prev => [...prev, ...items]);
+    e.target.value = "";
   };
+
+  const updateItem = (id: string, patch: Partial<PhotoQueueItemFit>) =>
+    setQueue(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+
+  const removeItem = (id: string) => {
+    setQueue(prev => {
+      const item = prev.find(it => it.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter(it => it.id !== id);
+    });
+  };
+
+  const uploadAll = async () => {
+    const pending = queue.filter(it => it.status === "pending");
+    if (!pending.length) return;
+    setUploading(true);
+    for (const item of pending) {
+      updateItem(item.id, { status: "uploading" });
+      const fd = new FormData();
+      fd.append("file",     item.file);
+      fd.append("caption",  item.caption);
+      fd.append("taken_at", item.date);
+      const res  = await fetch("/api/admin/fitness/photos", { method: "POST", body: fd });
+      const json = await res.json();
+      updateItem(item.id, res.ok ? { status: "done" } : { status: "error", error: json.error });
+    }
+    setUploading(false);
+  };
+
+  const clearDone = () => {
+    setQueue(prev => {
+      prev.filter(it => it.status === "done").forEach(it => URL.revokeObjectURL(it.preview));
+      return prev.filter(it => it.status !== "done");
+    });
+  };
+
+  const statusColor = (s: PhotoQueueItemFit["status"]) =>
+    s === "done" ? "#5BD68C" : s === "error" ? "#FF6B6B" : s === "uploading" ? "#007AFF" : "#555";
+
+  const statusLabel = (it: PhotoQueueItemFit) =>
+    it.status === "done" ? "✓ 完成" : it.status === "error" ? `✗ ${it.error ?? "失败"}` : it.status === "uploading" ? "上传中…" : "待上传";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
 
-      {/* 周数据 */}
+      {/* ── 周数据 ── */}
       <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
         <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>记录本周数据</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>周开始日期</span>
-            <input type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>本周训练时长（小时）</span>
-            <input type="number" step="0.1" placeholder="6.5" value={weekHours} onChange={e => setWeekHours(e.target.value)} style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>累计公里数（km）</span>
-            <input type="number" step="0.1" placeholder="412.5" value={totalKm} onChange={e => setTotalKm(e.target.value)} style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>备注（可选）</span>
-            <input type="text" placeholder="本周完成了五次训练" value={note} onChange={e => setNote(e.target.value)} style={inp} />
-          </label>
+          {[
+            { label: "周开始日期",       type: "date",   val: weekStart,  set: setWeekStart,  ph: "" },
+            { label: "训练时长（小时）", type: "number", val: weekHours,  set: setWeekHours,  ph: "6.5" },
+            { label: "累计公里数（km）", type: "number", val: totalKm,    set: setTotalKm,    ph: "412.5" },
+            { label: "备注（可选）",     type: "text",   val: note,       set: setNote,       ph: "本周完成了五次训练" },
+          ].map(({ label, type, val, set, ph }) => (
+            <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</span>
+              <input type={type} step={type === "number" ? "0.1" : undefined} placeholder={ph}
+                value={val} onChange={e => set(e.target.value)} style={inp} />
+            </label>
+          ))}
         </div>
         <button onClick={saveStat} disabled={statStatus.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
           {statStatus.type === "loading" ? "保存中…" : "保存周数据"}
@@ -539,28 +584,74 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
         )}
       </div>
 
-      {/* 健身照片 */}
+      {/* ── 批量上传健身照片 ── */}
       <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>上传健身照片</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "1/-1" }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>选择图片</span>
-            <input ref={fileRef} type="file" accept="image/*" style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>描述（可选）</span>
-            <input type="text" placeholder="今日推胸日" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} style={inp} />
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>拍摄日期（可选）</span>
-            <input type="date" value={photoDate} onChange={e => setPhotoDate(e.target.value)} style={inp} />
-          </label>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5" }}>批量上传健身照片</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            {queue.some(it => it.status === "done") && (
+              <button onClick={clearDone} style={{ ...btnSecondary }}>清除已完成</button>
+            )}
+            <button onClick={() => fileRef.current?.click()} style={{ ...btnSecondary }}>+ 选择图片</button>
+          </div>
         </div>
-        <button onClick={uploadPhoto} disabled={photoStatus.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
-          {photoStatus.type === "loading" ? "上传中…" : "上传照片"}
-        </button>
-        {photoStatus.type !== "idle" && (
-          <p style={{ marginTop: 10, fontSize: 12, color: photoStatus.type === "success" ? "#5BD68C" : "#FF6B6B" }}>{photoStatus.msg}</p>
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFilesChange} style={{ display: "none" }} />
+
+        {queue.length === 0 ? (
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{ border: "2px dashed #1e1e26", borderRadius: 12, padding: "40px 24px",
+              textAlign: "center", color: "#333", cursor: "pointer", fontSize: 13 }}
+          >
+            点击或拖拽图片到这里（支持多选）
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {queue.map(item => (
+              <div key={item.id} style={{ display: "grid", gridTemplateColumns: "64px 1fr auto",
+                gap: 12, alignItems: "center", background: "#0c0c0f",
+                borderRadius: 10, padding: "10px 14px", border: "1px solid #1e1e26" }}>
+                {/* 预览 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.preview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} />
+                {/* 信息 */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.file.name}
+                  </span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="text" placeholder="描述（可选）" value={item.caption}
+                      onChange={e => updateItem(item.id, { caption: e.target.value })}
+                      disabled={item.status !== "pending"}
+                      style={{ ...inp, flex: 1, fontSize: 12, padding: "6px 10px" }}
+                    />
+                    <input
+                      type="date" value={item.date}
+                      onChange={e => updateItem(item.id, { date: e.target.value })}
+                      disabled={item.status !== "pending"}
+                      style={{ ...inp, width: 130, fontSize: 12, padding: "6px 10px" }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 11, color: statusColor(item.status) }}>{statusLabel(item)}</span>
+                </div>
+                {/* 删除 */}
+                {item.status === "pending" && (
+                  <button onClick={() => removeItem(item.id)}
+                    style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {queue.some(it => it.status === "pending") && (
+          <button onClick={uploadAll} disabled={uploading}
+            style={{ ...btnPrimary, marginTop: 16, width: "100%" }}>
+            {uploading ? "上传中…" : `上传全部（${queue.filter(it => it.status === "pending").length} 张）`}
+          </button>
         )}
       </div>
 
@@ -570,6 +661,7 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
 
 const inp: React.CSSProperties = { background: "#0c0c0f", border: "1px solid #1e1e26", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#eeeef5", outline: "none", width: "100%", boxSizing: "border-box" };
 const btnPrimary: React.CSSProperties = { background: "#007AFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 500 };
+const btnSecondary: React.CSSProperties = { background: "transparent", border: "1px solid #1e1e26", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#888", cursor: "pointer" };
 
 // ─── Main page ────────────────────────────────────────────────
 const NAV: { key: Tab; label: string; icon: string }[] = [

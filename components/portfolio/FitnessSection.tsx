@@ -4,6 +4,7 @@ import { FITNESS } from "@/lib/portfolio-data";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
 import { CardStack } from "@/components/ui/card-stack";
+import { FitnessPhotoStack } from "@/components/ui/fitness-photo-stack";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { FitnessPhoto } from "@/lib/types";
@@ -22,8 +23,8 @@ export const Highlight = ({
 );
 
 // ── 硬编码常量 ─────────────────────────────────────────────────
-const AVG_HR  = 80;
-const KCAL    = 742;
+const AVG_HR   = 80;
+const KCAL     = 742;
 const BODY_FAT = 13;
 
 const WEEKLY_PLAN = [
@@ -66,9 +67,8 @@ const PHIL_CARDS = [
     designation: "DATA · HEART RATE & BODY FAT",
     content: (
       <p>
-        我追踪心率、体脂、PR，但数字是工具，不是目的。
-        真正的反馈来自<Highlight>早晨起床时的身体感受</Highlight>——
-        比任何指标都诚实。
+        追踪心率、体脂、PR，但数字是工具，不是目的。
+        真正的反馈来自<Highlight>早晨起床时的身体感受</Highlight>。
       </p>
     ),
   },
@@ -90,9 +90,9 @@ function HRSparkline() {
   const pts = useMemo(() => {
     const n = 60;
     return Array.from({ length: n }, (_, i) => {
-      const t = i / (n - 1);
+      const t    = i / (n - 1);
       const base = 0.4 + Math.sin(t * 8.6) * 0.2 + Math.sin(t * 3.1 + 0.5) * 0.15;
-      const y = Math.max(0.05, Math.min(0.95, base + (Math.sin(i * 12.9898) * 43758.5453 % 1) * 0.18 - 0.09));
+      const y    = Math.max(0.05, Math.min(0.95, base + (Math.sin(i * 12.9898) * 43758.5453 % 1) * 0.18 - 0.09));
       return [t * 100, (1 - y) * 100] as [number, number];
     });
   }, []);
@@ -121,46 +121,20 @@ export function FitnessSection() {
 
   useEffect(() => {
     const sb = createClient();
-
-    // 获取最新一周数据
     sb.from("fitness_stats")
       .select("week_hours, total_km")
       .order("week_start", { ascending: false })
       .limit(1)
       .single()
       .then(({ data }) => {
-        if (data) {
-          setWeekHours(data.week_hours);
-          setTotalKm(data.total_km);
-        }
+        if (data) { setWeekHours(data.week_hours); setTotalKm(data.total_km); }
       });
-
-    // 获取健身照片
     sb.from("fitness_photos")
       .select("*")
       .order("taken_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => {
-        if (data) setPhotos(data as FitnessPhoto[]);
-      });
+      .limit(12)
+      .then(({ data }) => { if (data) setPhotos(data as FitnessPhoto[]); });
   }, []);
-
-  // 照片 CardStack items
-  const photoCards = photos.map((p, i) => ({
-    id: i,
-    name: p.caption ?? `训练照 ${i + 1}`,
-    designation: p.taken_at ?? "",
-    content: (
-      <div className="w-full h-40 rounded-xl overflow-hidden -mt-1 -mx-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={p.photo_url}
-          alt={p.caption ?? "fitness photo"}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    ),
-  }));
 
   return (
     <section className="section" id="fit">
@@ -173,23 +147,25 @@ export function FitnessSection() {
           />
         </Reveal>
 
-        <Reveal delay={60}>
+        {/* ── 顶部：照片展示（全宽，有照片才显示）── */}
+        {photos.length > 0 && (
+          <Reveal delay={40}>
+            <div className="fit-photo-row">
+              <p className="fit-stack-label">训练瞬间</p>
+              <FitnessPhotoStack photos={photos} />
+            </div>
+          </Reveal>
+        )}
+
+        {/* ── 主体：左右两列 ── */}
+        <Reveal delay={80}>
           <div className="fit-layout">
 
-            {/* ── 左列 ── */}
+            {/* 左列：理念 + 心率 + 力量 */}
             <div className="fit-stack-col">
               <p className="fit-stack-label">训练哲学</p>
               <CardStack items={PHIL_CARDS} offset={12} scaleFactor={0.05} />
 
-              {/* 健身照片（有照片时显示） */}
-              {photoCards.length > 0 && (
-                <>
-                  <p className="fit-stack-label" style={{ marginTop: 32 }}>训练瞬间</p>
-                  <CardStack items={photoCards} offset={10} scaleFactor={0.04} />
-                </>
-              )}
-
-              {/* 心率 */}
               <div className="fit-card" style={{ marginTop: 16 }}>
                 <div className="label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 12h3l2-7 4 14 2-7h7"/></svg>
@@ -208,13 +184,12 @@ export function FitnessSection() {
                 <HRSparkline />
               </div>
 
-              {/* 力量 PR */}
               <div className="fit-card" style={{ marginTop: 14 }}>
                 <div className="label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M9 12h6"/></svg>
                   力量 PR · 1RM
                 </div>
-                {[FITNESS.bench, FITNESS.squat, FITNESS.dead, FITNESS.ohp].map((pr) => (
+                {[FITNESS.bench, FITNESS.squat, FITNESS.dead, FITNESS.ohp].map(pr => (
                   <div className="pr-row" key={pr.name}>
                     <span className="name">{pr.name}</span>
                     <span><span className="val">{pr.val}</span><span className="delta">+{pr.delta}</span></span>
@@ -223,7 +198,7 @@ export function FitnessSection() {
               </div>
             </div>
 
-            {/* ── 右列 ── */}
+            {/* 右列：核心数据 + 热力图 + 本周计划 */}
             <div className="fit-data-col">
               <div className="fit-grid">
 
@@ -254,7 +229,6 @@ export function FitnessSection() {
                   <div className="delta" style={{ color: "var(--fg-3)" }}>体脂率</div>
                 </div>
 
-                {/* 热力图 */}
                 <div className="fit-card fit-c-12">
                   <div className="label">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
@@ -268,7 +242,6 @@ export function FitnessSection() {
                   </div>
                 </div>
 
-                {/* 本周计划 */}
                 <div className="fit-card fit-c-12">
                   <div className="label">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
