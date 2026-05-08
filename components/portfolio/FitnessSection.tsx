@@ -125,12 +125,46 @@ export function FitnessSection() {
             <div className="fit-stack-col">
               <p className="fit-stack-label">训练哲学</p>
               <CardStack items={FIT_CARDS} offset={12} scaleFactor={0.05} />
+
+              {/* 心率 */}
+              <div className="fit-card" style={{ marginTop: 16 }}>
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 12h3l2-7 4 14 2-7h7"/></svg>
+                  心率 · 今日训练
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
+                  <div>
+                    <div className="big" style={{ fontSize: "clamp(28px,2.5vw,36px)" }}>{FITNESS.avgHr}<span className="unit">bpm</span></div>
+                    <div className="delta" style={{ color: "var(--fg-3)" }}>平均心率</div>
+                  </div>
+                  <div>
+                    <div className="big" style={{ fontSize: "clamp(28px,2.5vw,36px)" }}>{FITNESS.kcal}<span className="unit">kcal</span></div>
+                    <div className="delta" style={{ color: "var(--fg-3)" }}>消耗</div>
+                  </div>
+                </div>
+                <HRSparkline />
+              </div>
+
+              {/* 力量 PR */}
+              <div className="fit-card" style={{ marginTop: 14 }}>
+                <div className="label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M9 12h6"/></svg>
+                  力量 PR · 1RM
+                </div>
+                {[FITNESS.bench, FITNESS.squat, FITNESS.dead, FITNESS.ohp].map((pr) => (
+                  <div className="pr-row" key={pr.name}>
+                    <span className="name">{pr.name}</span>
+                    <span><span className="val">{pr.val}</span><span className="delta">+{pr.delta}</span></span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* 右列：数据 Grid */}
             <div className="fit-data-col">
               <div className="fit-grid">
 
+                {/* 顶部三格：核心指标 */}
                 <div className="fit-card fit-c-4">
                   <div className="label">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -161,74 +195,45 @@ export function FitnessSection() {
                   <div className="delta" style={{ color: "var(--fg-3)" }}>体脂率</div>
                 </div>
 
-                <div className="fit-card fit-c-6">
+                {/* 热力图 */}
+                <div className="fit-card fit-c-12">
                   <div className="label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 12h3l2-7 4 14 2-7h7"/></svg>
-                    心率 · 今日训练
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+                    训练强度 · 近 26 周
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
-                    <div>
-                      <div className="big" style={{ fontSize: "clamp(28px,3.5vw,40px)" }}>{FITNESS.avgHr}<span className="unit">bpm</span></div>
-                      <div className="delta" style={{ color: "var(--fg-3)" }}>平均心率</div>
-                    </div>
-                    <div>
-                      <div className="big" style={{ fontSize: "clamp(28px,3.5vw,40px)" }}>{FITNESS.kcal}<span className="unit">kcal</span></div>
-                      <div className="delta" style={{ color: "var(--fg-3)" }}>消耗</div>
-                    </div>
+                  <div className="heatmap">
+                    {FITNESS.heat.map((v, i) => <div key={i} className="cell" data-l={v} />)}
                   </div>
-                  <HRSparkline />
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>
+                    <span>26 weeks ago</span>
+                    <span>本周</span>
+                  </div>
                 </div>
 
-                <div className="fit-card fit-c-6">
+                {/* 本周计划 */}
+                <div className="fit-card fit-c-12">
                   <div className="label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M9 12h6"/></svg>
-                    力量 PR · 1RM
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    本周计划
                   </div>
-                  {[FITNESS.bench, FITNESS.squat, FITNESS.dead, FITNESS.ohp].map((pr) => (
-                    <div className="pr-row" key={pr.name}>
-                      <span className="name">{pr.name}</span>
-                      <span><span className="val">{pr.val}</span><span className="delta">+{pr.delta}</span></span>
-                    </div>
-                  ))}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginTop: 8 }}>
+                    {["一","二","三","四","五","六","日"].map((d, i) => {
+                      const k = ["推","休","拉","休","腿","有氧","休"][i];
+                      const active = k !== "休";
+                      return (
+                        <div key={i} style={{
+                          padding: "12px 6px", textAlign: "center", borderRadius: 10,
+                          border: "1px solid var(--line)",
+                          background: active ? "var(--accent-soft)" : "transparent",
+                          color: active ? "#9CC8FF" : "var(--fg-3)",
+                        }}>
+                          <div style={{ fontSize: 11, opacity: .7 }}>{d}</div>
+                          <div style={{ marginTop: 6, fontSize: 13, fontWeight: 500 }}>{k}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-
-                    <div className="fit-card fit-c-12">
-                      <div className="label">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
-                        训练强度 · 近 26 周
-                      </div>
-                      <div className="heatmap">
-                        {FITNESS.heat.map((v, i) => <div key={i} className="cell" data-l={v} />)}
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>
-                        <span>26 weeks ago</span>
-                        <span>本周</span>
-                      </div>
-                    </div>
-
-                    <div className="fit-card fit-c-12">
-                      <div className="label">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                        本周计划
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginTop: 8 }}>
-                        {["一","二","三","四","五","六","日"].map((d, i) => {
-                          const k = ["推","休","拉","休","腿","有氧","休"][i];
-                          const active = k !== "休";
-                          return (
-                            <div key={i} style={{
-                              padding: "12px 6px", textAlign: "center", borderRadius: 10,
-                              border: "1px solid var(--line)",
-                              background: active ? "var(--accent-soft)" : "transparent",
-                              color: active ? "#9CC8FF" : "var(--fg-3)",
-                            }}>
-                              <div style={{ fontSize: 11, opacity: .7 }}>{d}</div>
-                              <div style={{ marginTop: 6, fontSize: 13, fontWeight: 500 }}>{k}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
 
               </div>
             </div>
