@@ -4,74 +4,91 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { FitnessPhoto } from "@/lib/types";
 
 export function FitnessPhotoStack({ photos }: { photos: FitnessPhoto[] }) {
-  const [cards, setCards] = useState<FitnessPhoto[]>([]);
-
-  useEffect(() => { setCards(photos); }, [photos]);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (cards.length < 2) return;
-    const t = setInterval(() => {
-      setCards(prev => {
-        const next = [...prev];
-        next.unshift(next.pop()!);
-        return next;
-      });
-    }, 3800);
+    if (photos.length < 2) return;
+    const t = setInterval(() => setIndex(i => (i + 1) % photos.length), 3800);
     return () => clearInterval(t);
-  }, [cards.length]);
+  }, [photos.length]);
 
-  if (cards.length === 0) return null;
+  if (photos.length === 0) return null;
 
-  const offset      = 12;
-  const scaleFactor = 0.05;
+  // 可见的 5 张：当前 ±2
+  const visible = [-2, -1, 0, 1, 2].map(offset => {
+    const i = ((index + offset) % photos.length + photos.length) % photos.length;
+    return { photo: photos[i], offset };
+  });
+
+  const rotations  = [-8, -4, 0, 4, 8];
+  const scales     = [0.82, 0.91, 1, 0.91, 0.82];
+  const translateX = [-120, -60, 0, 60, 120];
 
   return (
-    <div className="relative w-full" style={{ height: 260 }}>
-      <AnimatePresence>
-        {cards.map((photo, i) => (
-          <motion.div
-            key={photo.id}
-            className="absolute w-full rounded-2xl overflow-hidden cursor-pointer"
-            style={{ height: 240, transformOrigin: "top center" }}
-            animate={{
-              top:   i * -offset,
-              scale: 1 - i * scaleFactor,
-              zIndex: cards.length - i,
+    <div
+      className="relative flex items-center justify-center"
+      style={{ height: 280, overflow: "visible" }}
+      onClick={() => setIndex(i => (i + 1) % photos.length)}
+    >
+      {visible.map(({ photo, offset }, i) => (
+        <motion.div
+          key={photo.id + offset}
+          className="absolute rounded-2xl overflow-hidden cursor-pointer"
+          style={{ width: 200, height: 250, transformOrigin: "bottom center" }}
+          animate={{
+            rotate:  rotations[i],
+            scale:   scales[i],
+            x:       translateX[i],
+            zIndex:  5 - Math.abs(offset),
+            opacity: Math.abs(offset) > 1 ? 0.6 : 1,
+          }}
+          transition={{ type: "spring", damping: 28, stiffness: 260 }}
+          onClick={e => {
+            e.stopPropagation();
+            setIndex(((index + offset) % photos.length + photos.length) % photos.length);
+          }}
+          whileHover={offset === 0 ? { scale: 1.04 } : {}}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo.photo_url}
+            alt={photo.caption ?? "fitness"}
+            className="w-full h-full object-cover"
+          />
+          {/* caption on active card */}
+          {offset === 0 && (photo.caption || photo.taken_at) && (
+            <AnimatePresence>
+              <motion.div
+                key={photo.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="absolute bottom-0 inset-x-0 px-3 py-2.5"
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72), transparent)" }}
+              >
+                {photo.caption  && <p className="text-white/90 text-[12px] font-light truncate">{photo.caption}</p>}
+                {photo.taken_at && <p className="text-white/45 text-[10px] font-mono mt-0.5">{photo.taken_at}</p>}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </motion.div>
+      ))}
+
+      {/* 进度点 */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1.5" style={{ zIndex: 10 }}>
+        {photos.slice(0, Math.min(photos.length, 8)).map((_, i) => (
+          <button
+            key={i}
+            onClick={e => { e.stopPropagation(); setIndex(i); }}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width:      i === index % Math.min(photos.length, 8) ? 16 : 5,
+              height:     5,
+              background: i === index % Math.min(photos.length, 8) ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.25)",
             }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            onClick={() =>
-              setCards(prev => {
-                const next = [...prev];
-                next.unshift(next.pop()!);
-                return next;
-              })
-            }
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.photo_url}
-              alt={photo.caption ?? "fitness"}
-              className="w-full h-full object-cover"
-            />
-            {/* caption on top card */}
-            {i === 0 && (photo.caption || photo.taken_at) && (
-              <AnimatePresence>
-                <motion.div
-                  key={photo.id + "-cap"}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute bottom-0 inset-x-0 px-4 py-3"
-                  style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72), transparent)" }}
-                >
-                  {photo.caption  && <p className="text-white/90 text-[13px] font-light">{photo.caption}</p>}
-                  {photo.taken_at && <p className="text-white/45 text-[11px] font-mono mt-0.5">{photo.taken_at}</p>}
-                </motion.div>
-              </AnimatePresence>
-            )}
-          </motion.div>
+          />
         ))}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
