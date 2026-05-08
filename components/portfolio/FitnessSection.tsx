@@ -153,7 +153,6 @@ export function FitnessSection() {
 
             {/* 左列：理念 + 心率 + 力量 */}
             <div className="fit-stack-col">
-              <p className="fit-stack-label">训练哲学</p>
               <CardStack items={PHIL_CARDS} offset={12} scaleFactor={0.05} />
 
               <div className="fit-card" style={{ marginTop: 16 }}>
@@ -200,34 +199,24 @@ export function FitnessSection() {
                   </div>
                 )}
 
-                <div className="fit-card fit-c-4">
-                  <div className="label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    本周训练
+                {/* 3 核心指标 — 压缩字体和高度 */}
+                {[
+                  { icon: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>, label: "本周训练", val: weekHours, unit: "小时", sub: "本周累计" },
+                  { icon: <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,           label: "今年累计", val: totalKm,   unit: "km",   sub: "跑步 + 骑行" },
+                  { icon: <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>, label: "当前体脂", val: BODY_FAT,  unit: "%",    sub: "体脂率" },
+                ].map(({ icon, label, val, unit, sub }) => (
+                  <div key={label} className="fit-card fit-c-4" style={{ padding: "14px 18px" }}>
+                    <div className="label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">{icon}</svg>
+                      {label}
+                    </div>
+                    <div className="big" style={{ fontSize: "clamp(26px,3vw,36px)" }}>{val}<span className="unit">{unit}</span></div>
+                    <div className="delta" style={{ color: "var(--fg-3)", marginTop: 4 }}>{sub}</div>
                   </div>
-                  <div className="big">{weekHours}<span className="unit">小时</span></div>
-                  <div className="delta" style={{ color: "var(--fg-3)" }}>本周累计</div>
-                </div>
+                ))}
 
-                <div className="fit-card fit-c-4">
-                  <div className="label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
-                    今年累计
-                  </div>
-                  <div className="big">{totalKm}<span className="unit">km</span></div>
-                  <div className="delta" style={{ color: "var(--fg-3)" }}>跑步 + 骑行</div>
-                </div>
-
-                <div className="fit-card fit-c-4">
-                  <div className="label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    当前体脂
-                  </div>
-                  <div className="big">{BODY_FAT}<span className="unit">%</span></div>
-                  <div className="delta" style={{ color: "var(--fg-3)" }}>体脂率</div>
-                </div>
-
-                <div className="fit-card fit-c-12">
+                {/* 热力图 — 压缩高度 */}
+                <div className="fit-card fit-c-12" style={{ padding: "14px 18px" }}>
                   <div className="label">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
                     训练强度 · 近 26 周
@@ -235,7 +224,7 @@ export function FitnessSection() {
                   <div className="heatmap">
                     {FITNESS.heat.map((v, i) => <div key={i} className="cell" data-l={v} />)}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>
                     <span>26 weeks ago</span><span>本周</span>
                   </div>
                 </div>
