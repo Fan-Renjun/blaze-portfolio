@@ -17,7 +17,10 @@ const Spline = dynamic<SplineProps>(
 const SCENE  = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE   = 85;
 const PANELW = 480;
-const BOTTOM = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
+// 右侧有深色/浅色和 cursor 两个 FAB（各 46px + 间距），预留 110px 空间
+const PANEL_MAX_W = "min(480px, calc(100vw - 110px))";
+const BOTTOM       = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
+const BOTTOM_PANEL = "max(48px, calc(env(safe-area-inset-bottom) + 32px))";
 
 type Phase   = "idle" | "active";
 type Message = { id: string; role: "user" | "assistant"; content: string };
@@ -146,47 +149,51 @@ export function ChatBot() {
 
   return (
     <>
-      {/* ── 球体（始终挂载，idle 时可见） ── */}
-      <motion.div
-        animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        onClick={() => { if (phase === "idle") { setShown(true); setPhase("active"); } }}
-        style={{
-          position:     "fixed",
-          bottom:       BOTTOM,
-          left:         "50%",
-          transform:    "translateX(-50%)",
-          zIndex:       200,
-          width:        SIZE,
-          height:       SIZE,
-          borderRadius: "50%",
-          overflow:     "hidden",
-          cursor:       "pointer",
-          pointerEvents: phase === "idle" ? "auto" : "none",
-        }}
-      >
-        <Spline scene={SCENE} onLoad={handleLoad} />
-      </motion.div>
+      {/* ── 球体：外层 div 负责定位，motion.div 只负责动画 ── */}
+      {/* 分离定位与动画，防止 framer-motion transform 覆盖 translateX(-50%) */}
+      <div style={{
+        position: "fixed", bottom: BOTTOM,
+        left: "50%", transform: "translateX(-50%)",
+        zIndex: 200, width: SIZE, height: SIZE,
+        pointerEvents: phase === "idle" ? "auto" : "none",
+      }}>
+        <motion.div
+          animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", position: "relative" }}
+        >
+          <Spline scene={SCENE} onLoad={handleLoad} />
+          {/* 透明捕获层：Spline canvas 会消费 touch 事件，
+              这层确保 click/touchend 能被正确捕获 */}
+          <div
+            style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }}
+            onClick={() => { setShown(true); setPhase("active"); }}
+            onTouchEnd={e => { e.preventDefault(); setShown(true); setPhase("active"); }}
+          />
+        </motion.div>
+      </div>
 
-      {/* ── 输入框 + 对话面板 ── */}
+      {/* ── 输入框 + 对话面板：同样分离定位与动画 ── */}
       <AnimatePresence>
         {phase === "active" && (
+          // 外层 div：fixed 定位 + 水平居中（静态 CSS，不受 framer-motion 影响）
+          <div
+            key="chat-anchor"
+            ref={containerRef}
+            style={{
+              position: "fixed", bottom: BOTTOM_PANEL,
+              left: "50%", transform: "translateX(-50%)",
+              zIndex: 200,
+              width: PANELW, maxWidth: PANEL_MAX_W,
+            }}
+          >
+          {/* 内层 motion.div：只做 opacity + y 动画 */}
           <motion.div
             key="chat"
-            ref={containerRef}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 10 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            style={{
-              position:  "fixed",
-              bottom:    BOTTOM,
-              left:      "50%",
-              transform: "translateX(-50%)",
-              zIndex:    200,
-              width:     PANELW,
-              maxWidth:  "calc(100vw - 32px)",
-            }}
             className="flex flex-col gap-2"
           >
             {/* ── 对话面板 ── */}
@@ -334,6 +341,7 @@ export function ChatBot() {
               )}
             </div>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>
