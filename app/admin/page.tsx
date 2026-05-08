@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────
-type Tab = "dashboard" | "photos" | "articles" | "projects";
+type Tab = "dashboard" | "photos" | "articles" | "projects" | "fitness";
 type Status = { type: "idle" | "loading" | "success" | "error"; msg?: string };
 
 interface PhotoQueueItem {
@@ -466,12 +466,121 @@ function StatusMsg({ status }: { status: Status }) {
   );
 }
 
+// ─── FitnessAdmin ─────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function FitnessAdmin({ supabase }: { supabase: any }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [statStatus,  setStatStatus]  = useState<Status>({ type: "idle" });
+  const [photoStatus, setPhotoStatus] = useState<Status>({ type: "idle" });
+  const [weekHours,   setWeekHours]   = useState("");
+  const [totalKm,     setTotalKm]     = useState("");
+  const [weekStart,   setWeekStart]   = useState(new Date().toISOString().slice(0, 10));
+  const [note,        setNote]        = useState("");
+  const [photoCaption, setPhotoCaption] = useState("");
+  const [photoDate,   setPhotoDate]   = useState("");
+
+  const saveStat = async () => {
+    if (!weekHours || !totalKm) return;
+    setStatStatus({ type: "loading" });
+    const { error } = await supabase.from("fitness_stats").insert({
+      week_start: weekStart,
+      week_hours: parseFloat(weekHours),
+      total_km:   parseFloat(totalKm),
+      note:       note || null,
+    });
+    setStatStatus(error ? { type: "error", msg: error.message } : { type: "success", msg: "已保存" });
+    if (!error) { setWeekHours(""); setTotalKm(""); setNote(""); }
+  };
+
+  const uploadPhoto = async () => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+    setPhotoStatus({ type: "loading" });
+    const ext  = file.name.split(".").pop();
+    const path = `${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("Fitness").upload(path, file, { upsert: true });
+    if (upErr) { setPhotoStatus({ type: "error", msg: upErr.message }); return; }
+    const { data: urlData } = supabase.storage.from("Fitness").getPublicUrl(path);
+    const { error: dbErr } = await supabase.from("fitness_photos").insert({
+      photo_url: urlData.publicUrl,
+      caption:   photoCaption || null,
+      taken_at:  photoDate || null,
+    });
+    setPhotoStatus(dbErr ? { type: "error", msg: dbErr.message } : { type: "success", msg: "照片已上传" });
+    if (!dbErr) { setPhotoCaption(""); setPhotoDate(""); if (fileRef.current) fileRef.current.value = ""; }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+      {/* 周数据 */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>记录本周数据</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>周开始日期</span>
+            <input type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} style={inp} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>本周训练时长（小时）</span>
+            <input type="number" step="0.1" placeholder="6.5" value={weekHours} onChange={e => setWeekHours(e.target.value)} style={inp} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>累计公里数（km）</span>
+            <input type="number" step="0.1" placeholder="412.5" value={totalKm} onChange={e => setTotalKm(e.target.value)} style={inp} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>备注（可选）</span>
+            <input type="text" placeholder="本周完成了五次训练" value={note} onChange={e => setNote(e.target.value)} style={inp} />
+          </label>
+        </div>
+        <button onClick={saveStat} disabled={statStatus.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
+          {statStatus.type === "loading" ? "保存中…" : "保存周数据"}
+        </button>
+        {statStatus.type !== "idle" && (
+          <p style={{ marginTop: 10, fontSize: 12, color: statStatus.type === "success" ? "#5BD68C" : "#FF6B6B" }}>{statStatus.msg}</p>
+        )}
+      </div>
+
+      {/* 健身照片 */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>上传健身照片</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "1/-1" }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>选择图片</span>
+            <input ref={fileRef} type="file" accept="image/*" style={inp} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>描述（可选）</span>
+            <input type="text" placeholder="今日推胸日" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} style={inp} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>拍摄日期（可选）</span>
+            <input type="date" value={photoDate} onChange={e => setPhotoDate(e.target.value)} style={inp} />
+          </label>
+        </div>
+        <button onClick={uploadPhoto} disabled={photoStatus.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
+          {photoStatus.type === "loading" ? "上传中…" : "上传照片"}
+        </button>
+        {photoStatus.type !== "idle" && (
+          <p style={{ marginTop: 10, fontSize: 12, color: photoStatus.type === "success" ? "#5BD68C" : "#FF6B6B" }}>{photoStatus.msg}</p>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+const inp: React.CSSProperties = { background: "#0c0c0f", border: "1px solid #1e1e26", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#eeeef5", outline: "none", width: "100%", boxSizing: "border-box" };
+const btnPrimary: React.CSSProperties = { background: "#007AFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 500 };
+
 // ─── Main page ────────────────────────────────────────────────
 const NAV: { key: Tab; label: string; icon: string }[] = [
   { key: "dashboard", label: "概览",  icon: "📊" },
   { key: "photos",    label: "照片",  icon: "📷" },
   { key: "articles",  label: "文章",  icon: "📝" },
   { key: "projects",  label: "项目",  icon: "📁" },
+  { key: "fitness",   label: "健身",  icon: "🏋️" },
 ];
 
 const TITLES: Record<Tab, string> = {
@@ -479,6 +588,7 @@ const TITLES: Record<Tab, string> = {
   photos:    "照片管理",
   articles:  "文章管理",
   projects:  "项目管理",
+  fitness:   "健身管理",
 };
 
 export default function AdminPage() {
@@ -532,6 +642,7 @@ export default function AdminPage() {
           {tab === "photos"    && <PhotosAdmin supabase={supabase} />}
           {tab === "articles"  && <ArticlesAdmin supabase={supabase} />}
           {tab === "projects"  && <ProjectsAdmin supabase={supabase} />}
+          {tab === "fitness"   && <FitnessAdmin  supabase={supabase} />}
         </div>
       </main>
     </div>
