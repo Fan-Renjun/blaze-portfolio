@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FITNESS } from "@/lib/portfolio-data";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
@@ -106,8 +106,6 @@ function HRSparkline() {
 
 // ── Main ──────────────────────────────────────────────────────
 export function FitnessSection() {
-  const [showAll, setShowAll] = useState(false);
-
   return (
     <section className="section" id="fit">
       <div className="container">
@@ -116,14 +114,6 @@ export function FitnessSection() {
             eyebrow="FITNESS / 运动"
             title="用身体校准生活"
             sub="体育总局注册健身教练 · 力量训练 4 次/周 · 每周追踪。"
-            action={
-              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
-                <span>{showAll ? "收起" : "完整数据"}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
-                </svg>
-              </button>
-            }
           />
         </Reveal>
 
@@ -202,8 +192,6 @@ export function FitnessSection() {
                   ))}
                 </div>
 
-                {showAll && (
-                  <>
                     <div className="fit-card fit-c-12">
                       <div className="label">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
@@ -241,8 +229,6 @@ export function FitnessSection() {
                         })}
                       </div>
                     </div>
-                  </>
-                )}
 
               </div>
             </div>
