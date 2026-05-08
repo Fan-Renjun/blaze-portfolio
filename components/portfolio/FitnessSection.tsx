@@ -147,18 +147,8 @@ export function FitnessSection() {
           />
         </Reveal>
 
-        {/* ── 顶部：照片展示（全宽，有照片才显示）── */}
-        {photos.length > 0 && (
-          <Reveal delay={40}>
-            <div className="fit-photo-row">
-              <p className="fit-stack-label">训练瞬间</p>
-              <FitnessPhotoStack photos={photos} />
-            </div>
-          </Reveal>
-        )}
-
         {/* ── 主体：左右两列 ── */}
-        <Reveal delay={80}>
+        <Reveal delay={60}>
           <div className="fit-layout">
 
             {/* 左列：理念 + 心率 + 力量 */}
@@ -261,6 +251,21 @@ export function FitnessSection() {
                     ))}
                   </div>
                 </div>
+
+                {/* 训练瞬间照片 */}
+                {photos.length > 0 && (
+                  <div className="fit-card fit-c-12" style={{ overflow: "visible" }}>
+                    <div className="label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                      </svg>
+                      训练瞬间
+                    </div>
+                    <FitnessPhotoStack photos={photos} />
+                  </div>
+                )}
 
               </div>
             </div>
