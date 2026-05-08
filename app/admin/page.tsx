@@ -467,47 +467,44 @@ function StatusMsg({ status }: { status: Status }) {
 }
 
 // ─── FitnessAdmin ─────────────────────────────────────────────
+// 写入操作走 server-side API routes（使用 service_role key 绕过 RLS）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function FitnessAdmin({ supabase }: { supabase: any }) {
+function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [statStatus,  setStatStatus]  = useState<Status>({ type: "idle" });
-  const [photoStatus, setPhotoStatus] = useState<Status>({ type: "idle" });
-  const [weekHours,   setWeekHours]   = useState("");
-  const [totalKm,     setTotalKm]     = useState("");
-  const [weekStart,   setWeekStart]   = useState(new Date().toISOString().slice(0, 10));
-  const [note,        setNote]        = useState("");
+  const [statStatus,   setStatStatus]  = useState<Status>({ type: "idle" });
+  const [photoStatus,  setPhotoStatus] = useState<Status>({ type: "idle" });
+  const [weekHours,    setWeekHours]   = useState("");
+  const [totalKm,      setTotalKm]     = useState("");
+  const [weekStart,    setWeekStart]   = useState(new Date().toISOString().slice(0, 10));
+  const [note,         setNote]        = useState("");
   const [photoCaption, setPhotoCaption] = useState("");
-  const [photoDate,   setPhotoDate]   = useState("");
+  const [photoDate,    setPhotoDate]   = useState("");
 
   const saveStat = async () => {
     if (!weekHours || !totalKm) return;
     setStatStatus({ type: "loading" });
-    const { error } = await supabase.from("fitness_stats").insert({
-      week_start: weekStart,
-      week_hours: parseFloat(weekHours),
-      total_km:   parseFloat(totalKm),
-      note:       note || null,
+    const res = await fetch("/api/admin/fitness/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ week_start: weekStart, week_hours: weekHours, total_km: totalKm, note }),
     });
-    setStatStatus(error ? { type: "error", msg: error.message } : { type: "success", msg: "已保存" });
-    if (!error) { setWeekHours(""); setTotalKm(""); setNote(""); }
+    const json = await res.json();
+    setStatStatus(res.ok ? { type: "success", msg: "已保存" } : { type: "error", msg: json.error });
+    if (res.ok) { setWeekHours(""); setTotalKm(""); setNote(""); }
   };
 
   const uploadPhoto = async () => {
     const file = fileRef.current?.files?.[0];
     if (!file) return;
     setPhotoStatus({ type: "loading" });
-    const ext  = file.name.split(".").pop();
-    const path = `${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("Fitness").upload(path, file, { upsert: true });
-    if (upErr) { setPhotoStatus({ type: "error", msg: upErr.message }); return; }
-    const { data: urlData } = supabase.storage.from("Fitness").getPublicUrl(path);
-    const { error: dbErr } = await supabase.from("fitness_photos").insert({
-      photo_url: urlData.publicUrl,
-      caption:   photoCaption || null,
-      taken_at:  photoDate || null,
-    });
-    setPhotoStatus(dbErr ? { type: "error", msg: dbErr.message } : { type: "success", msg: "照片已上传" });
-    if (!dbErr) { setPhotoCaption(""); setPhotoDate(""); if (fileRef.current) fileRef.current.value = ""; }
+    const fd = new FormData();
+    fd.append("file",     file);
+    fd.append("caption",  photoCaption);
+    fd.append("taken_at", photoDate);
+    const res  = await fetch("/api/admin/fitness/photos", { method: "POST", body: fd });
+    const json = await res.json();
+    setPhotoStatus(res.ok ? { type: "success", msg: "照片已上传" } : { type: "error", msg: json.error });
+    if (res.ok) { setPhotoCaption(""); setPhotoDate(""); if (fileRef.current) fileRef.current.value = ""; }
   };
 
   return (
