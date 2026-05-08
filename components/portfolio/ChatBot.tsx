@@ -157,13 +157,16 @@ export function ChatBot() {
         <motion.div
           animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          onClick={() => { if (phase === "idle") { setShown(true); setPhase("active"); } }}
-          style={{
-            width: "100%", height: "100%",
-            borderRadius: "50%", overflow: "hidden", cursor: "pointer",
-          }}
+          style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", position: "relative" }}
         >
           <Spline scene={SCENE} onLoad={handleLoad} />
+          {/* 透明捕获层：Spline canvas 会消费 touch 事件，
+              这层确保 click/touchend 能被正确捕获 */}
+          <div
+            style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1 }}
+            onClick={() => { setShown(true); setPhase("active"); }}
+            onTouchEnd={e => { e.preventDefault(); setShown(true); setPhase("active"); }}
+          />
         </motion.div>
       </div>
 
