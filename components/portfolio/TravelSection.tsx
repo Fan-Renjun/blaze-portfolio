@@ -78,14 +78,6 @@ export function TravelSection() {
             eyebrow="TRAVEL / 旅行足迹"
             title="去过的地方在心里发光"
             sub="路过的不是城市，是一个又一个的自己。"
-            action={
-              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
-                <span>{showAll ? "收起" : "全部去过的城市"}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
-                </svg>
-              </button>
-            }
           />
         </Reveal>
 
@@ -141,6 +133,18 @@ export function TravelSection() {
               </MagicCard>
             ))}
           </div>
+
+          {/* 展开按钮放在列表下方 */}
+          {cities.length > 6 && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+              <button className="expand-btn" onClick={() => setShowAll(!showAll)}>
+                <span>{showAll ? "收起" : `全部去过的城市 (${cities.length})`}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d={showAll ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"}/>
+                </svg>
+              </button>
+            </div>
+          )}
         </Reveal>
       </div>
     </section>

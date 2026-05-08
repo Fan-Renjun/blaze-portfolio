@@ -17,6 +17,8 @@ const Spline = dynamic<SplineProps>(
 const SCENE  = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE   = 85;
 const PANELW = 480;
+// 右侧有深色/浅色和 cursor 两个 FAB（各 46px + 间距），预留 110px 空间
+const PANEL_MAX_W = "min(480px, calc(100vw - 110px))";
 const BOTTOM       = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
 const BOTTOM_PANEL = "max(48px, calc(env(safe-area-inset-bottom) + 32px))";
 
@@ -182,7 +184,7 @@ export function ChatBot() {
               position: "fixed", bottom: BOTTOM_PANEL,
               left: "50%", transform: "translateX(-50%)",
               zIndex: 200,
-              width: PANELW, maxWidth: "calc(100vw - 32px)",
+              width: PANELW, maxWidth: PANEL_MAX_W,
             }}
           >
           {/* 内层 motion.div：只做 opacity + y 动画 */}
