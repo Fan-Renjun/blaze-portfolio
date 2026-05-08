@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────
-type Tab = "dashboard" | "photos" | "articles" | "projects" | "fitness";
+type Tab = "dashboard" | "photos" | "articles" | "projects" | "fitness" | "travel";
 type Status = { type: "idle" | "loading" | "success" | "error"; msg?: string };
 
 interface PhotoQueueItem {
@@ -700,6 +700,104 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
   );
 }
 
+// ─── TravelAdmin ──────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TravelAdmin({ supabase }: { supabase: any }) {
+  type CityRow = { id: string; city: string; country: string; year: number; lat: number; lng: number; notes: string | null };
+  const [rows,    setRows]    = useState<CityRow[]>([]);
+  const [status,  setStatus]  = useState<Status>({ type: "idle" });
+  const [city,    setCity]    = useState("");
+  const [country, setCountry] = useState("");
+  const [year,    setYear]    = useState(new Date().getFullYear().toString());
+  const [lat,     setLat]     = useState("");
+  const [lng,     setLng]     = useState("");
+  const [notes,   setNotes]   = useState("");
+
+  const load = async () => {
+    const { data } = await supabase.from("travel_cities").select("*").order("year", { ascending: false });
+    if (data) setRows(data);
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const add = async () => {
+    if (!city || !country || !year || !lat || !lng) return;
+    setStatus({ type: "loading" });
+    const text = await (await fetch("/api/admin/travel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ city, country, year, lat, lng, notes }),
+    })).text();
+    const json = text ? JSON.parse(text) : {};
+    if (json.ok) {
+      setStatus({ type: "success", msg: "已添加" });
+      setCity(""); setCountry(""); setLat(""); setLng(""); setNotes("");
+      load();
+    } else {
+      setStatus({ type: "error", msg: json.error ?? "失败" });
+    }
+  };
+
+  const del = async (id: string) => {
+    await fetch("/api/admin/travel", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    load();
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* 新增 */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 20 }}>新增旅行城市</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          {[
+            { label: "城市/地区", val: city,    set: setCity,    ph: "东京" },
+            { label: "国家",      val: country, set: setCountry, ph: "Japan" },
+            { label: "年份",      val: year,    set: setYear,    ph: "2025" },
+            { label: "纬度",      val: lat,     set: setLat,     ph: "35.68" },
+            { label: "经度",      val: lng,     set: setLng,     ph: "139.69" },
+            { label: "一句话总结（可选）", val: notes, set: setNotes, ph: "涉谷夜雨…" },
+          ].map(({ label, val, set, ph }) => (
+            <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: label.includes("总结") ? "1/-1" : undefined }}>
+              <span style={{ fontSize: 11, color: "#555", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</span>
+              <input type="text" placeholder={ph} value={val} onChange={e => set(e.target.value)} style={inp} />
+            </label>
+          ))}
+        </div>
+        <button onClick={add} disabled={status.type === "loading"} style={{ ...btnPrimary, marginTop: 16 }}>
+          {status.type === "loading" ? "添加中…" : "添加城市"}
+        </button>
+        {status.type !== "idle" && (
+          <p style={{ marginTop: 10, fontSize: 12, color: status.type === "success" ? "#5BD68C" : "#FF6B6B" }}>{status.msg}</p>
+        )}
+      </div>
+
+      {/* 列表 */}
+      <div style={{ background: "#111116", borderRadius: 16, padding: 24, border: "1px solid #1e1e26" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#eeeef5", marginBottom: 16 }}>已有城市（{rows.length}）</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 480, overflowY: "auto" }}>
+          {rows.map(r => (
+            <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px", background: "#0c0c0f", borderRadius: 8, border: "1px solid #1e1e26" }}>
+              <div>
+                <span style={{ fontSize: 13, color: "#eeeef5", fontWeight: 500 }}>{r.city}</span>
+                <span style={{ fontSize: 12, color: "#555", marginLeft: 10 }}>{r.country} · {r.year}</span>
+                {r.notes && <span style={{ fontSize: 11, color: "#444", marginLeft: 10 }}>{r.notes}</span>}
+              </div>
+              <button onClick={() => del(r.id)}
+                style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const inp: React.CSSProperties = { background: "#0c0c0f", border: "1px solid #1e1e26", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#eeeef5", outline: "none", width: "100%", boxSizing: "border-box" };
 const btnPrimary: React.CSSProperties = { background: "#007AFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 500 };
 const btnSecondary: React.CSSProperties = { background: "transparent", border: "1px solid #1e1e26", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#888", cursor: "pointer" };
@@ -711,6 +809,7 @@ const NAV: { key: Tab; label: string; icon: string }[] = [
   { key: "articles",  label: "文章",  icon: "📝" },
   { key: "projects",  label: "项目",  icon: "📁" },
   { key: "fitness",   label: "健身",  icon: "🏋️" },
+  { key: "travel",    label: "旅行",  icon: "✈️" },
 ];
 
 const TITLES: Record<Tab, string> = {
@@ -719,6 +818,7 @@ const TITLES: Record<Tab, string> = {
   articles:  "文章管理",
   projects:  "项目管理",
   fitness:   "健身管理",
+  travel:    "旅行管理",
 };
 
 export default function AdminPage() {
@@ -773,6 +873,7 @@ export default function AdminPage() {
           {tab === "articles"  && <ArticlesAdmin supabase={supabase} />}
           {tab === "projects"  && <ProjectsAdmin supabase={supabase} />}
           {tab === "fitness"   && <FitnessAdmin  supabase={supabase} />}
+          {tab === "travel"    && <TravelAdmin   supabase={supabase} />}
         </div>
       </main>
     </div>

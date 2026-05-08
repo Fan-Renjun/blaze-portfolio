@@ -1,9 +1,11 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TRAVEL, type TravelCity } from "@/lib/portfolio-data";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
 import { MagicCard, BentoSpotlight } from "./MagicCard";
+import { createClient } from "@/lib/supabase/client";
+import type { TravelCityRow } from "@/lib/types";
 
 function TravelMiniMap({ cities }: { cities: TravelCity[] }) {
   const W = 640, H = 320;
@@ -46,10 +48,27 @@ function TravelMiniMap({ cities }: { cities: TravelCity[] }) {
   );
 }
 
+// 把 TravelCityRow 转成组件内部用的 TravelCity 格式
+function rowToCity(r: TravelCityRow): TravelCity {
+  return { id: r.id, city: r.city, country: r.country, lat: r.lat, lng: r.lng, year: r.year, notes: r.notes ?? "" };
+}
+
 export function TravelSection() {
   const [showAll, setShowAll] = useState(false);
+  const [cities, setCities]   = useState<TravelCity[]>(TRAVEL.recent); // 默认用静态数据
   const listRef = useRef<HTMLDivElement>(null);
-  const visible = showAll ? TRAVEL.recent : TRAVEL.recent.slice(0, 6);
+
+  useEffect(() => {
+    createClient()
+      .from("travel_cities")
+      .select("*")
+      .order("year", { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) setCities((data as TravelCityRow[]).map(rowToCity));
+      });
+  }, []);
+
+  const visible = showAll ? cities : cities.slice(0, 6);
 
   return (
     <section className="section" id="travel">
@@ -74,11 +93,11 @@ export function TravelSection() {
           <div className="travel-grid">
             <div className="travel-stats">
               <div className="ts-row">
-                <div className="ts-big">{TRAVEL.countries}</div>
+                <div className="ts-big">{new Set(cities.map(c => c.country)).size}</div>
                 <div className="ts-lbl">国家 / 地区</div>
               </div>
               <div className="ts-row">
-                <div className="ts-big">{TRAVEL.cities}</div>
+                <div className="ts-big">{cities.length}</div>
                 <div className="ts-lbl">城市</div>
               </div>
               <div className="ts-row">
@@ -87,7 +106,7 @@ export function TravelSection() {
               </div>
             </div>
             <div className="travel-map-wrap">
-              <TravelMiniMap cities={TRAVEL.recent} />
+              <TravelMiniMap cities={cities} />
             </div>
           </div>
         </Reveal>

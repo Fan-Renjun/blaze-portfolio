@@ -31,6 +31,17 @@ export type Photo = {
   created_at: string;
 };
 
+export type TravelCityRow = {
+  id: string;
+  city: string;
+  country: string;
+  year: number;
+  lat: number;
+  lng: number;
+  notes: string | null;
+  created_at: string;
+};
+
 export type FitnessStat = {
   id: string;
   week_start: string;
