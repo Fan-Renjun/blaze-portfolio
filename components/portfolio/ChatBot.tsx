@@ -17,7 +17,8 @@ const Spline = dynamic<SplineProps>(
 const SCENE  = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE   = 85;
 const PANELW = 480;
-const BOTTOM = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
+const BOTTOM       = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
+const BOTTOM_PANEL = "max(48px, calc(env(safe-area-inset-bottom) + 32px))";
 
 type Phase   = "idle" | "active";
 type Message = { id: string; role: "user" | "assistant"; content: string };
@@ -178,7 +179,7 @@ export function ChatBot() {
             key="chat-anchor"
             ref={containerRef}
             style={{
-              position: "fixed", bottom: BOTTOM,
+              position: "fixed", bottom: BOTTOM_PANEL,
               left: "50%", transform: "translateX(-50%)",
               zIndex: 200,
               width: PANELW, maxWidth: "calc(100vw - 32px)",
