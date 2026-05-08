@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    .ring { fill: none; stroke: #0a0a0b; stroke-width: 5.5; }
+    .dot  { fill: #0a0a0b; }
+    @media (prefers-color-scheme: dark) {
+      .ring { stroke: #ffffff; }
+      .dot  { fill: #ffffff; }
+    }
+  </style>
+  <!-- 水平轨道 -->
+  <ellipse class="ring" cx="50" cy="54" rx="43" ry="16" />
+  <!-- 右斜轨道 -->
+  <ellipse class="ring" cx="50" cy="54" rx="43" ry="16" transform="rotate(60 50 54)" />
+  <!-- 左斜轨道 -->
+  <ellipse class="ring" cx="50" cy="54" rx="43" ry="16" transform="rotate(-60 50 54)" />
+  <!-- 电子 -->
+  <circle class="dot" cx="73" cy="13" r="7" />
+</svg>
