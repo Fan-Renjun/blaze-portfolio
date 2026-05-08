@@ -143,7 +143,7 @@ export function FitnessSection() {
           <SectionHead
             eyebrow="FITNESS / 运动"
             title="用身体校准生活"
-            sub="体育总局注册健身教练 · 力量训练 4 次/周 · 每周追踪。"
+            sub={<><strong style={{ color: "var(--fg)" }}>体育总局注册健身教练</strong> · 力量训练 4 次/周 · 每周追踪。</>}
           />
         </Reveal>
 
