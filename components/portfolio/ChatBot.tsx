@@ -48,16 +48,25 @@ export function ChatBot() {
   }, []);
 
   // ── Click outside → idle ──────────────────────────────────
+  // 延迟 300ms 注册，让移动端的合成 mousedown 先走完
   useEffect(() => {
     if (phase !== "active") return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      const target = (e as MouseEvent).target ?? (e as TouchEvent).target;
+      if (containerRef.current && !containerRef.current.contains(target as Node)) {
         abortRef.current?.abort();
         setPhase("idle");
       }
     };
-    const t = setTimeout(() => document.addEventListener("mousedown", handler), 80);
-    return () => { clearTimeout(t); document.removeEventListener("mousedown", handler); };
+    const t = setTimeout(() => {
+      document.addEventListener("mousedown", handler as EventListener);
+      document.addEventListener("touchstart", handler as EventListener, { passive: true });
+    }, 300);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("mousedown", handler as EventListener);
+      document.removeEventListener("touchstart", handler as EventListener);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -141,12 +150,12 @@ export function ChatBot() {
       <motion.div
         animate={{ opacity: shown && phase === "idle" ? 1 : 0, scale: phase === "idle" ? 1 : 0.85 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        onClick={() => phase === "idle" && setPhase("active")}
+        onClick={() => { if (phase === "idle") { setShown(true); setPhase("active"); } }}
         style={{
           position:     "fixed",
           bottom:       BOTTOM,
           left:         "50%",
-          translateX:   "-50%",
+          transform:    "translateX(-50%)",
           zIndex:       200,
           width:        SIZE,
           height:       SIZE,
@@ -170,13 +179,13 @@ export function ChatBot() {
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             style={{
-              position:   "fixed",
-              bottom:     BOTTOM,
-              left:       "50%",
-              translateX: "-50%",
-              zIndex:     200,
-              width:      PANELW,
-              maxWidth:   "calc(100vw - 32px)",
+              position:  "fixed",
+              bottom:    BOTTOM,
+              left:      "50%",
+              transform: "translateX(-50%)",
+              zIndex:    200,
+              width:     PANELW,
+              maxWidth:  "calc(100vw - 32px)",
             }}
             className="flex flex-col gap-2"
           >
