@@ -466,6 +466,28 @@ function StatusMsg({ status }: { status: Status }) {
   );
 }
 
+// ─── Image compressor (Canvas API) ───────────────────────────
+function compressImage(file: File, maxPx = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                 { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 // ─── FitnessAdmin ─────────────────────────────────────────────
 type PhotoQueueItemFit = {
   id: string;
@@ -533,17 +555,12 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
     setUploading(true);
     for (const item of pending) {
       updateItem(item.id, { status: "uploading" });
-      // 用 FileReader 转 base64，避免 FormData 在 Next.js App Router 中的兼容问题
-      const fileBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(item.file);
-      });
+      // 压缩图片到最大 1200px / JPEG 80%，避免 base64 过大导致 JSON 解析失败
+      const fileBase64 = await compressImage(item.file, 1200, 0.8);
       const res  = await fetch("/api/admin/fitness/photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileBase64, fileName: item.file.name, caption: item.caption, taken_at: item.date }),
+        body: JSON.stringify({ fileBase64, fileName: item.file.name.replace(/\.[^.]+$/, ".jpg"), caption: item.caption, taken_at: item.date }),
       });
       const text = await res.text();
       const json = text ? JSON.parse(text) : {};
