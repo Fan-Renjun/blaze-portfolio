@@ -496,8 +496,9 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ week_start: weekStart, week_hours: weekHours, total_km: totalKm, note }),
     });
-    const json = await res.json();
-    setStatStatus(res.ok ? { type: "success", msg: "已保存" } : { type: "error", msg: json.error });
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : {};
+    setStatStatus(res.ok ? { type: "success", msg: "已保存" } : { type: "error", msg: json.error ?? `HTTP ${res.status}` });
     if (res.ok) { setWeekHours(""); setTotalKm(""); setNote(""); }
   };
 
@@ -537,8 +538,9 @@ function FitnessAdmin({ supabase: _supabase }: { supabase: any }) {
       fd.append("caption",  item.caption);
       fd.append("taken_at", item.date);
       const res  = await fetch("/api/admin/fitness/photos", { method: "POST", body: fd });
-      const json = await res.json();
-      updateItem(item.id, res.ok ? { status: "done" } : { status: "error", error: json.error });
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+      updateItem(item.id, res.ok ? { status: "done" } : { status: "error", error: json.error ?? `HTTP ${res.status}` });
     }
     setUploading(false);
   };
