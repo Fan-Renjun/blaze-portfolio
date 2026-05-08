@@ -16,9 +16,9 @@ const Spline = dynamic<SplineProps>(
 
 const SCENE  = "https://prod.spline.design/GCN6opbKSvziT6Vw/scene.splinecode";
 const SIZE   = 85;
-const PANELW = 480;
-// 右侧有深色/浅色和 cursor 两个 FAB（各 46px + 间距），预留 110px 空间
+const PANELW      = 480;
 const PANEL_MAX_W = "min(480px, calc(100vw - 110px))";
+const MAX_Q       = 10; // 每次会话最多 10 个问题
 const BOTTOM       = "max(28px, calc(env(safe-area-inset-bottom) + 12px))";
 const BOTTOM_PANEL = "max(48px, calc(env(safe-area-inset-bottom) + 32px))";
 
@@ -31,6 +31,10 @@ export function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
+
+  // 用户问题计数（只算 user 消息）
+  const questionCount = messages.filter(m => m.role === "user").length;
+  const atLimit       = questionCount >= MAX_Q;
 
   const splineRef    = useRef<Application | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -301,14 +305,15 @@ export function ChatBot() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 rows={1}
-                placeholder="问问 HIM 吧~"
-                disabled={loading}
-                className="flex-1 bg-transparent text-white/85 placeholder-white/35 text-[13.5px]
+                placeholder={atLimit ? `今日提问次数已达上限（${MAX_Q}/${MAX_Q}）` : "问问 HIM 吧~"}
+                disabled={loading || atLimit}
+                className="flex-1 bg-transparent text-white/85 placeholder-white/35
                   resize-none outline-none leading-relaxed py-3.5 disabled:opacity-40"
-                style={{ fieldSizing: "content" } as React.CSSProperties}
+                // font-size ≥ 16px 防止 iOS 自动缩放页面
+                style={{ fontSize: 16, fieldSizing: "content" } as React.CSSProperties}
               />
 
-              {/* 发送 / 停止 按钮 */}
+              {/* 生成中：停止按钮；空闲：发送按钮（上限后隐藏） */}
               {loading ? (
                 <button
                   onClick={handleStop}
@@ -316,20 +321,19 @@ export function ChatBot() {
                   style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)" }}
                   title="停止生成"
                 >
-                  {/* 方形 stop 图标（参考 Claude/ChatGPT 风格） */}
                   <svg viewBox="0 0 10 10" className="w-3 h-3">
                     <rect x="1" y="1" width="8" height="8" rx="1.5" fill="rgba(255,255,255,0.85)" />
                   </svg>
                 </button>
-              ) : (
+              ) : !atLimit ? (
                 <button
                   onClick={() => sendMessage(input)}
                   disabled={!input.trim()}
                   className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0
                     transition-all duration-150 disabled:opacity-25 disabled:cursor-not-allowed"
                   style={{
-                    background:   input.trim() ? "rgba(100,140,255,0.28)" : "rgba(255,255,255,0.07)",
-                    border:       `1px solid ${input.trim() ? "rgba(100,140,255,0.45)" : "rgba(255,255,255,0.10)"}`,
+                    background: input.trim() ? "rgba(100,140,255,0.28)" : "rgba(255,255,255,0.07)",
+                    border:     `1px solid ${input.trim() ? "rgba(100,140,255,0.45)" : "rgba(255,255,255,0.10)"}`,
                   }}
                   title="发送"
                 >
@@ -338,7 +342,7 @@ export function ChatBot() {
                     <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
                   </svg>
                 </button>
-              )}
+              ) : null}
             </div>
           </motion.div>
           </div>
